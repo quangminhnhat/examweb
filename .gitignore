@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets ###
+client_secret_1001429381357-8hvfeu2uhl7667da3gfgucim38h0j59i.apps.googleusercontent.com.json
+src/main/resources/application.properties
