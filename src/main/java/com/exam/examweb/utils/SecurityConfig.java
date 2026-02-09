@@ -1,5 +1,6 @@
 package com.exam.examweb.utils;
 
+import com.exam.examweb.entities.User;
 import com.exam.examweb.services.OAuthService;
 import com.exam.examweb.services.UserService;
 import jakarta.servlet.http.Cookie;
@@ -14,6 +15,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,6 +23,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import java.util.Optional;
 
 @Configuration
 @EnableWebSecurity
@@ -56,6 +60,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring().requestMatchers("/css/**", "/js/**", "/images/**");
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(@NotNull HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable) // Disable CSRF
@@ -63,7 +72,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/",
-                                "/oauth/**", "/register", "/error")
+                                "/oauth/**", "/register", "/error", "/role-selection")
                         .permitAll()
                         .requestMatchers("/api/auth/**")
                         .permitAll()
@@ -111,16 +120,23 @@ public class SecurityConfig {
                                                     (DefaultOidcUser) authentication.getPrincipal();
 
                                             userService.saveOauthUser(oidcUser.getEmail(), oidcUser.getName(), oidcUser.getSubject(), oidcUser.getFullName(), oidcUser.getPicture());
-
-                                            // Generate JWT for OAuth user too
-                                            String token = tokenProvider.generateToken(oidcUser.getName());
-                                            Cookie cookie = new Cookie("JWT_TOKEN", token);
-                                            cookie.setHttpOnly(true);
-                                            cookie.setPath("/");
-                                            cookie.setMaxAge(7 * 24 * 60 * 60);
-                                            response.addCookie(cookie);
-
-                                            response.sendRedirect("/");
+                                            
+                                            // Check if user has roles
+                                            Optional<User> userOptional = userService.findByUsername(oidcUser.getEmail());
+                                            if (userOptional.isPresent() && userOptional.get().getRoles().isEmpty()) {
+                                                // No roles, redirect to selection
+                                                response.sendRedirect("/role-selection");
+                                            } else {
+                                                // Has roles, proceed normally
+                                                // Use EMAIL as the username for the token, as that is what is stored in the DB
+                                                String token = tokenProvider.generateToken(oidcUser.getEmail());
+                                                Cookie cookie = new Cookie("JWT_TOKEN", token);
+                                                cookie.setHttpOnly(true);
+                                                cookie.setPath("/");
+                                                cookie.setMaxAge(7 * 24 * 60 * 60);
+                                                response.addCookie(cookie);
+                                                response.sendRedirect("/");
+                                            }
                                         }
                                 )
                                 .permitAll()

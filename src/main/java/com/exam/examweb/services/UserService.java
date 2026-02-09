@@ -3,6 +3,7 @@ package com.exam.examweb.services;
 import com.exam.examweb.constants.Provider;
 import com.exam.examweb.entities.Role;
 import com.exam.examweb.entities.User;
+import com.exam.examweb.payload.RegistrationRequest;
 import com.exam.examweb.repositories.IRoleRepository;
 import com.exam.examweb.repositories.IUserRepository;
 import jakarta.validation.constraints.NotNull;
@@ -34,7 +35,7 @@ public class UserService implements UserDetailsService {
     public void save(@NotNull User user, String roleName) {
         user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
         user.setProvider(Provider.LOCAL.value);
-
+        
         Long roleId = com.exam.examweb.constants.Role.student.value; // Default to student
         if ("teacher".equalsIgnoreCase(roleName)) {
             roleId = com.exam.examweb.constants.Role.teacher.value;
@@ -46,6 +47,32 @@ public class UserService implements UserDetailsService {
         }
         
         userRepository.save(user);
+    }
+
+    @Transactional
+    public User registerNewUser(RegistrationRequest registrationRequest) {
+        if (userRepository.findByUsername(registrationRequest.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+
+        User user = new User();
+        user.setUsername(registrationRequest.getUsername());
+        user.setPassword(new BCryptPasswordEncoder().encode(registrationRequest.getPassword()));
+        user.setEmail(registrationRequest.getEmail());
+        user.setPhone(registrationRequest.getPhone());
+        user.setProvider(Provider.LOCAL.value);
+
+        Long roleId = com.exam.examweb.constants.Role.student.value; // Default to student
+        if ("teacher".equalsIgnoreCase(registrationRequest.getRole())) {
+            roleId = com.exam.examweb.constants.Role.teacher.value;
+        }
+        
+        Role role = roleRepository.findRoleById(roleId);
+        if (role != null) {
+            user.getRoles().add(role);
+        }
+        
+        return userRepository.save(user);
     }
 
     @Override
@@ -63,19 +90,29 @@ public class UserService implements UserDetailsService {
     public void saveOauthUser(String email, @NotNull String username, String googleId, String fullName, String avatar) {
         if(userRepository.findByGoogleId(googleId).isPresent())
             return;
+        
+        // Check if user exists by email to avoid duplicates if they switch providers
+        Optional<User> existingUser = userRepository.findByEmail(email);
+        if (existingUser.isPresent()) {
+            User user = existingUser.get();
+            user.setGoogleId(googleId);
+            user.setProvider(Provider.GOOGLE.value);
+            if (user.getAvatar() == null) user.setAvatar(avatar);
+            userRepository.save(user);
+            return;
+        }
+
         var user = new User();
-        user.setUsername(username);
+        user.setUsername(email); // Use email as username for OAuth
         user.setEmail(email);
-        user.setPassword(new BCryptPasswordEncoder().encode(username));
+        user.setPassword(new BCryptPasswordEncoder().encode("OAUTH2_USER")); // Dummy password
         user.setProvider(Provider.GOOGLE.value);
         user.setGoogleId(googleId);
         user.setFullName(fullName);
         user.setAvatar(avatar);
         
-        Role defaultRole = roleRepository.findRoleById(com.exam.examweb.constants.Role.student.value);
-        if (defaultRole != null) {
-            user.getRoles().add(defaultRole);
-        }
+        // NO DEFAULT ROLE ASSIGNED HERE
+        // The user will be redirected to select a role if they have none.
 
         userRepository.save(user);
     }
@@ -96,10 +133,8 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
 
-        // Clear existing roles
         user.getRoles().clear();
 
-        // Add new roles
         roleNames.stream()
             .map(roleRepository::findByName)
             .filter(Optional::isPresent)
@@ -107,6 +142,23 @@ public class UserService implements UserDetailsService {
             .forEach(user.getRoles()::add);
 
         return userRepository.save(user);
+    }
+    
+    @Transactional
+    public void assignRoleToUser(String username, String roleName) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Long roleId = com.exam.examweb.constants.Role.student.value;
+        if ("teacher".equalsIgnoreCase(roleName)) {
+            roleId = com.exam.examweb.constants.Role.teacher.value;
+        }
+
+        Role role = roleRepository.findRoleById(roleId);
+        if (role != null) {
+            user.getRoles().add(role);
+            userRepository.save(user);
+        }
     }
 
     @Transactional

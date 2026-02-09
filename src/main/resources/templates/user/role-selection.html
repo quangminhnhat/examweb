@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Your Role</title>
+    <th:block th:replace="~{layout :: link-css}"></th:block>
+</head>
+<body>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Welcome! Please select your role</h3>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/role-selection}" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">I am a:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="role" id="roleStudent" value="student" checked>
+                                <label class="form-check-label" for="roleStudent">
+                                    Student
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="role" id="roleTeacher" value="teacher">
+                                <label class="form-check-label" for="roleTeacher">
+                                    Teacher
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Continue</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
