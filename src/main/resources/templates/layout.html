@@ -1,87 +1,125 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-      lang="en">
+      lang="en" class="h-100">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initialscale=1.0">
-    <title>My App</title>
-    <link th:fragment="link-css" rel="stylesheet"
-          th:href="@{/css/bootstrap.min.css}">
-    <link th:fragment="custom-css" rel="stylesheet"
-          th:href="@{/css/style.css}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HUTECH Exam System</title>
+
+    <th:block th:fragment="link-css">
+        <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    </th:block>
+
+    <th:block th:fragment="custom-css">
+        <style>
+            body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+            .navbar { box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 0.8rem 1rem; }
+            .navbar-brand { font-weight: 800; color: #0d6efd !important; letter-spacing: -1px; }
+            .nav-link { font-weight: 500; color: #495057 !important; transition: 0.3s; }
+            .nav-link:hover { color: #0d6efd !important; }
+            .user-dropdown { background: white; border-radius: 12px; border: none; shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            .footer { background: white; border-top: 1px solid #eee; }
+            .btn-auth { border-radius: 8px; font-weight: 600; padding: 0.5rem 1.2rem; }
+        </style>
+    </th:block>
 </head>
 <body class="d-flex flex-column h-100">
 
 <header th:fragment="header">
-    <!-- Hidden div to store user roles for JavaScript -->
-    <div sec:authorize="isAuthenticated()"
-         id="user-roles"
-         th:data-roles="${#authentication.authorities}"
-         style="display: none;">
-    </div>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <i class="bi bi-mortarboard-fill me-2 fs-3"></i> HUTECH
+            </a>
 
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">HUTECH</a>
-            <button class="navbar-toggler" type="button" data-bstoggle="collapse"
-                    data-bs-target="#navbarSupportedContent"
-                    aria-controls="navbarSupportedContent"
-                    aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse"
-                 id="navbarSupportedContent">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+            <div class="collapse navbar-collapse" id="navContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
                     <li class="nav-item">
-                        <a class="nav-link active" aria-current="page"
-                           href="/">Home</a>
+                        <a class="nav-link" href="/"><i class="bi bi-house-door me-1"></i> Trang chủ</a>
                     </li>
-                    <li class="nav-item" sec:authorize="hasAnyAuthority('ADMIN',
-'USER')">
-                        <a class="nav-link" href="/books">
-                            List Book
+
+                    <li class="nav-item" sec:authorize="hasAuthority('teacher')">
+                        <a class="nav-link text-primary fw-bold" href="/teacher/classes">
+                            <i class="bi bi- briefcase me-1"></i> Quản lý lớp
                         </a>
                     </li>
-                    <li class="nav-item"
-                        sec:authorize="hasAnyAuthority('ADMIN')">
-                        <a class="nav-link" href="/books/add">
-                            Add Book
-                        </a>
-                    </li>
-                    <li class="nav-item" sec:authorize="hasAnyAuthority('ADMIN',
-'USER')">
-                        <a class="nav-link" href="/cart">
-                            Cart
-                        </a>
-                    </li>
-                    <li sec:authorize="isAuthenticated()">
-                        <form th:action="@{/logout}" method="post">
-                            <button class="btn btn-outline-danger"
-                                    type="submit">Logout</button>
-                        </form>
-                    </li>
-                    <li sec:authorize="!isAuthenticated()">
-                        <a class="btn btn-outline-primary" href="/login">
-                            Login
+
+                    <li class="nav-item" sec:authorize="hasAuthority('student')">
+                        <a class="nav-link text-success fw-bold" href="/student/dashboard">
+                            <i class="bi bi-mortarboard me-1"></i> Góc Sinh Viên
                         </a>
                     </li>
                 </ul>
+
+                <div class="d-flex align-items-center">
+
+                    <div class="dropdown" sec:authorize="isAuthenticated()">
+                        <a class="d-flex align-items-center text-decoration-none dropdown-toggle"
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="text-end me-2 d-none d-sm-block">
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">Xin chào,</small>
+                                <span class="fw-bold text-dark" style="font-size: 0.9rem;"
+                                      sec:authentication="name">Username</span>
+                            </div>
+                            <img src="https://ui-avatars.com/api/?name=User&background=0D6EFD&color=fff"
+                                 class="rounded-circle border" width="38" height="38" alt="avatar">
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-end user-dropdown shadow border-0 mt-3 p-2">
+                            <li><h6 class="dropdown-header">Tài khoản cá nhân</h6></li>
+                            <li><a class="dropdown-item rounded-3" href="/profile"><i class="bi bi-person me-2"></i> Hồ sơ của tôi</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form th:action="@{/logout}" method="post" class="m-0">
+                                    <button class="dropdown-item rounded-3 text-danger" type="submit">
+                                        <i class="bi bi-box-arrow-right me-2"></i> Đăng xuất
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div sec:authorize="!isAuthenticated()">
+                        <a class="btn btn-outline-primary btn-auth me-2" href="/login">Đăng nhập</a>
+                        <a class="btn btn-primary btn-auth shadow-sm" href="/register">Đăng ký</a>
+                    </div>
+
+                </div>
             </div>
         </div>
     </nav>
 </header>
-<div class="container">
-    <div th:fragment="content"></div>
-</div>
-<footer th:fragment="footer" class="footer mt-auto py-3 bg-light">
-    <div class="container text-center">Copyright &copy;
-        <span th:text="${#dates.year(#dates.createNow())}"></span>
-        <a href="https://www.hutech.edu.vn/">HUTECH Education</a>
+
+<main class="flex-shrink-0">
+    <div th:fragment="content" class="py-4">
     </div>
-    <script th:src="@{/js/bootstrap.min.js}"></script>
+</main>
+
+<footer th:fragment="footer" class="footer mt-auto py-4">
+    <div class="container text-center">
+        <div class="row align-items-center">
+            <div class="col-md-6 text-md-start">
+                <span class="text-secondary small">Copyright &copy;
+                    <span th:text="${#dates.year(#dates.createNow())}"></span>
+                    <b>HUTECH Exam System</b>. All rights reserved.
+                </span>
+            </div>
+            <div class="col-md-6 text-md-end mt-2 mt-md-0">
+                <a href="https://www.hutech.edu.vn/" class="text-decoration-none text-secondary small me-3">Hỗ trợ</a>
+                <a href="#" class="text-decoration-none text-secondary small">Điều khoản</a>
+            </div>
+        </div>
+    </div>
+
     <script th:src="@{/js/jquery-3.7.0.min.js}"></script>
-</footer>
+    <script th:src="@{/js/bootstrap.bundle.min.js}"></script> </footer>
+
 </body>
 </html>

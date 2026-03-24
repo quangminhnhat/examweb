@@ -1,6 +1,7 @@
 package com.exam.examweb.entities;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.*;
@@ -27,24 +28,30 @@ public class ExamAttempt {
 
     @ManyToOne
     @JoinColumn(name = "exam_id", nullable = false)
+    @JsonIgnoreProperties({"questions", "classEntity", "teacher"}) // Chặn vòng lặp
     private Exam exam;
 
     @ManyToOne
     @JoinColumn(name = "student_id", nullable = false)
+    @JsonIgnoreProperties({"password", "roles", "classes"}) // Giấu thông tin nhạy cảm của học sinh
     private User student;
 
     @Builder.Default
-    private int score = 0;
+    private int score = 0; // Điểm số thô (Số câu đúng)
 
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @JsonIgnoreProperties("attempt") // Chống lặp ở list câu trả lời
     private List<Answer> answers = new ArrayList<>();
 
     @PrePersist
-    protected void onPersist() {
-        submittedAt = LocalDateTime.now();
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
     }
 }

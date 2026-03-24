@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Đang làm bài thi...</title>
+    <th:block th:replace="~{layout :: link-css}"></th:block>
+    <style>
+        body { background-color: #f4f7f6; user-select: none; padding-top: 80px; }
+
+        /* Navbar cố định trên cùng */
+        .exam-navbar { position: fixed; top: 0; left: 0; right: 0; background: white; z-index: 1030; box-shadow: 0 2px 15px rgba(0,0,0,0.05); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .timer-box { background: #fff0f0; border: 2px solid #dc3545; border-radius: 10px; padding: 5px 20px; letter-spacing: 2px; }
+
+        /* Sidebar số câu hỏi */
+        .sidebar-nav { position: fixed; left: 0; top: 80px; bottom: 0; width: 300px; background: white; border-right: 1px solid #eee; padding: 20px; overflow-y: auto; }
+        .q-number-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .q-number { aspect-ratio: 1; cursor: pointer; border: 2px solid #e9ecef; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-weight: 600; color: #6c757d; transition: 0.2s; }
+        .q-number:hover { border-color: #0d6efd; color: #0d6efd; }
+        .q-number.answered { background-color: #198754; color: white; border-color: #198754; }
+        .q-number.current { border-color: #0d6efd; background-color: #e9f2ff; color: #0d6efd; box-shadow: 0 0 0 3px rgba(13,110,253,0.2); }
+
+        /* Khu vực làm bài chính */
+        .main-content { margin-left: 300px; padding: 40px; max-width: 1000px; margin-right: auto; }
+        .question-card { display: none; background: white; border-radius: 20px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); border: 1px solid #f0f0f0; }
+        .question-card.active { display: block; animation: fadeIn 0.3s ease-in; }
+
+        /* Đáp án */
+        .answer-option { border: 2px solid #f8f9fa; border-radius: 12px; transition: 0.2s; cursor: pointer; background: #f8f9fa; }
+        .answer-option:hover { border-color: #0d6efd; background: #fff; transform: translateX(5px); }
+        .answer-option input:checked + label { color: #0d6efd; }
+        .answer-option:has(input:checked) { border-color: #0d6efd; background: #e9f2ff; box-shadow: 0 4px 10px rgba(13,110,253,0.1); }
+        .form-check-label { cursor: pointer; font-size: 1.1rem; padding: 15px 10px; width: 100%; margin: 0; }
+        .form-check-input { width: 1.2em; height: 1.2em; margin-top: 0.8rem; cursor: pointer; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .text-blink { animation: blink 1s linear infinite; background: #dc3545; color: white !important; }
+        footer, .footer { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="exam-navbar">
+    <div class="d-flex align-items-center">
+        <h4 class="mb-0 fw-bold text-primary"><i class="bi bi-mortarboard-fill me-2"></i>HUTECH Exam</h4>
+    </div>
+    <div class="d-flex align-items-center">
+        <div id="examTimer" class="h3 mb-0 me-4 fw-bold text-danger timer-box">--:--</div>
+        <button class="btn btn-danger btn-lg fw-bold px-5 rounded-pill shadow-sm" onclick="submitExam(false)">NỘP BÀI</button>
+    </div>
+</div>
+
+<input type="hidden" id="hiddenAttemptId" th:value="${attemptId}">
+
+<div class="sidebar-nav">
+    <h6 class="fw-bold text-uppercase text-secondary mb-3 letter-spacing-1">Tiến độ làm bài</h6>
+    <div id="questionNavList" class="q-number-grid mb-4">
+    </div>
+    <div class="card bg-light border-0 rounded-3 p-3 text-center">
+        <small class="text-muted fw-bold">Trạng thái kết nối: <span class="text-success">Ổn định</span></small>
+    </div>
+</div>
+
+<div class="main-content">
+    <div id="examContent">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+            <h4 class="text-muted mt-3 fw-bold">Đang tải cấu trúc đề thi...</h4>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between mt-4">
+        <button class="btn btn-outline-secondary btn-lg px-4 rounded-pill fw-bold" id="prevBtn" onclick="changeQuestion(-1)">
+            &larr; Câu trước
+        </button>
+        <button class="btn btn-primary btn-lg px-5 rounded-pill fw-bold shadow-sm" id="nextBtn" onclick="changeQuestion(1)">
+            Câu tiếp theo &rarr;
+        </button>
+    </div>
+</div>
+
+<div class="modal fade" id="securityModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-body p-5 text-center">
+                <i class="bi bi-shield-fill-exclamation text-danger display-1 mb-3"></i>
+                <h2 class="fw-bold text-danger mb-4">NỘI QUY PHÒNG THI</h2>
+                <div class="bg-light p-4 rounded-4 text-start mb-4">
+                    <p class="fs-5 mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Bài thi sẽ tự động chạy ở chế độ <b>Toàn màn hình</b>.</p>
+                    <p class="fs-5 mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Các thao tác <b>Copy, Paste, Chuột phải</b> đã bị vô hiệu hóa.</p>
+                    <p class="fs-5 mb-0 text-danger fw-bold"><i class="bi bi-x-circle-fill me-2"></i> KHÔNG chuyển Tab hoặc thoát Toàn màn hình. Vi phạm 3 lần sẽ bị THU BÀI NGAY LẬP TỨC.</p>
+                </div>
+                <button type="button" class="btn btn-danger btn-lg px-5 rounded-pill fw-bold" onclick="startExamNow()">TÔI ĐÃ HIỂU - BẮT ĐẦU THI</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{layout :: footer}"></div>
+<script th:src="@{/js/take-exam.js}"></script>
+</body>
+</html>

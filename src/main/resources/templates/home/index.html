@@ -1,24 +1,131 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initialscale=1.0">
-  <title>ỨNG DỤNG QUẢN LÝ SÁCH</title>
+  <title>HUTECH Exam Online - Hệ thống thi cử hiện đại</title>
   <th:block th:replace="~{layout::link-css}"></th:block>
   <th:block th:replace="~{layout::custom-css}"></th:block>
+  <style>
+    /* Hero Section Custom Styles */
+    .hero-section {
+        background: linear-gradient(135deg, #0d6efd 0%, #003d99 100%);
+        padding: 100px 0;
+        color: white;
+        border-radius: 0 0 50px 50px;
+        margin-bottom: 50px;
+    }
+    .hero-img {
+        filter: drop-shadow(0 20px 30px rgba(0,0,0,0.2));
+        transition: transform 0.5s;
+    }
+    .hero-img:hover { transform: scale(1.02); }
+
+    .feature-card {
+        border: none;
+        border-radius: 20px;
+        transition: 0.3s;
+        background: white;
+    }
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(13, 110, 253, 0.15) !important;
+    }
+    .icon-box {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+  </style>
 </head>
-<body>
+<body class="bg-light">
+
 <th:block th:replace="~{layout::header}"></th:block>
-<div class="container">
-  <nav class="navbar navbar-light bg-light">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">
-        TRANG CHỦ ỨNG DỤNG QUẢN LÝ SÁCH - KẾT NỐI CSDL MYSQL
-      </a>
+
+<main>
+  <section class="hero-section">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-6">
+          <h1 class="display-4 fw-bold mb-3">Chinh phục tri thức cùng <br><span style="color: #ffc107;">HUTECH Exam Online</span></h1>
+          <p class="lead mb-4 opacity-75">Hệ thống khảo thí trực tuyến thông minh, minh bạch và bảo mật được nhóm 11 phát triển.</p>
+          <div class="d-flex gap-3" sec:authorize="!isAuthenticated()">
+            <a href="/login" class="btn btn-warning btn-lg fw-bold px-4 rounded-pill shadow">Bắt đầu ngay</a>
+            <a href="#features" class="btn btn-outline-light btn-lg px-4 rounded-pill">Tìm hiểu thêm</a>
+          </div>
+          <div class="d-flex gap-3" sec:authorize="isAuthenticated()">
+            <a sec:authorize="hasAuthority('student')" href="/student/dashboard" class="btn btn-warning btn-lg fw-bold px-4 rounded-pill">Vào học tập</a>
+            <a sec:authorize="hasAuthority('teacher')" href="/teacher/classes" class="btn btn-warning btn-lg fw-bold px-4 rounded-pill">Quản lý lớp</a>
+          </div>
+        </div>
+        <div class="col-lg-6 d-none d-lg-block text-center">
+          <img src="https://img.freepik.com/free-vector/online-exam-concept-illustration_114360-5003.jpg"
+               alt="Exam Illustration" class="img-fluid hero-img rounded-4" style="max-width: 80%;">
+        </div>
+      </div>
     </div>
-  </nav>
-</div>
+  </section>
+
+  <section class="container mb-5" id="features">
+    <div class="text-center mb-5">
+      <h6 class="text-primary fw-bold text-uppercase">Tính năng nổi bật</h6>
+      <h2 class="fw-bold">Tại sao nên sử dụng hệ thống của chúng tôi?</h2>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card feature-card shadow-sm p-4 h-100">
+          <div class="icon-box bg-primary bg-opacity-10 text-primary">
+            <i class="bi bi-shield-check"></i>
+          </div>
+          <h5 class="fw-bold">Bảo mật tuyệt đối</h5>
+          <p class="text-secondary small">Công nghệ chống gian lận, khóa màn hình và giám sát tab thông minh giúp kỳ thi luôn công bằng.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card feature-card shadow-sm p-4 h-100">
+          <div class="icon-box bg-success bg-opacity-10 text-success">
+            <i class="bi bi-lightning-charge"></i>
+          </div>
+          <h5 class="fw-bold">Kết quả tức thì</h5>
+          <p class="text-secondary small">Biết điểm ngay sau khi nộp bài. Hệ thống tự động chấm điểm chính xác và lưu trữ lịch sử thi.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card feature-card shadow-sm p-4 h-100">
+          <div class="icon-box bg-warning bg-opacity-10 text-warning">
+            <i class="bi bi-layout-text-window-reverse"></i>
+          </div>
+          <h5 class="fw-bold">Giao diện thân thiện</h5>
+          <p class="text-secondary small">Thiết kế tối ưu cho cả máy tính và điện thoại, giúp sinh viên thao tác dễ dàng, tập trung làm bài.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="container mb-5 py-5">
+    <div class="card bg-dark text-white p-5 rounded-4 border-0 shadow-lg"
+         style="background: url('https://www.hutech.edu.vn/img/bg-hutech.jpg') center/cover;">
+      <div class="row align-items-center bg-dark bg-opacity-75 p-4 rounded-4">
+        <div class="col-md-8">
+          <h3 class="fw-bold">Sẵn sàng để bắt đầu kỳ thi của bạn?</h3>
+          <p class="m-0 opacity-75">Tham gia hàng ngàn sinh viên đang học tập và kiểm tra mỗi ngày.</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+          <a href="/login" class="btn btn-primary btn-lg px-5 rounded-pill fw-bold">Tham gia ngay</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
 <th:block th:replace="~{layout::footer}"></th:block>
+
 </body>
 </html>

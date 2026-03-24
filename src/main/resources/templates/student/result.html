@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kết Quả Bài Thi | HUTECH</title>
+    <th:block th:replace="~{layout :: link-css}"></th:block>
+    <th:block th:replace="~{layout :: custom-css}"></th:block>
+    <style>
+        .score-circle {
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            border: 10px solid #198754;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto;
+            font-size: 4rem; font-weight: 800; color: #198754;
+            box-shadow: 0 10px 30px rgba(25, 135, 84, 0.2);
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .stat-card { transition: 0.3s; border: none; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="bg-light d-flex flex-column h-100">
+<div th:replace="~{layout :: header}"></div>
+
+<div class="container mt-5 flex-shrink-0">
+    <input type="hidden" id="hiddenAttemptId" th:value="${attemptId}">
+
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6 text-center">
+            <div class="card border-0 shadow-sm p-5 rounded-4 bg-white">
+                <h3 class="fw-bold mb-2 text-dark">Kết Quả Bài Làm</h3>
+                <h5 id="examTitle" class="text-primary mb-4">Đang tải tên kỳ thi...</h5>
+
+                <div class="score-circle mb-4" id="displayScore">0</div>
+
+                <h4 class="fw-bold text-dark mb-1">Điểm của bạn</h4>
+                <p class="text-secondary small mb-4" id="submitTime"><i class="bi bi-clock-history me-1"></i> Nộp lúc: --:--</p>
+
+                <div class="row g-3 mb-5">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-4 stat-card border">
+                            <div class="small text-muted mb-1">Tổng số câu hỏi</div>
+                            <div class="h3 fw-bold text-dark mb-0" id="totalQuestions">0</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded-4 stat-card border border-success border-opacity-25">
+                            <div class="small text-muted mb-1">Số câu trả lời đúng</div>
+                            <div class="h3 fw-bold text-success mb-0" id="correctAnswers">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="/student/dashboard" class="btn btn-primary btn-lg rounded-pill fw-bold px-5 shadow-sm w-100">
+                    <i class="bi bi-house-door-fill me-2"></i> Trở về Bảng Điều Khiển
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{layout :: footer}"></div>
+
+<script th:src="@{/js/result.js}"></script>
+</body>
+</html>

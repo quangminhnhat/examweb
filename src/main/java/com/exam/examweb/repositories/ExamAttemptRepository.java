@@ -11,7 +11,16 @@ import java.util.Optional;
 
 @Repository
 public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, Long> {
+
+    // Tìm bài làm của 1 sinh viên cụ thể trong 1 kỳ thi cụ thể
     Optional<ExamAttempt> findByExamAndStudent(Exam exam, User student);
+
+    // Tìm tất cả bài làm của 1 sinh viên
     List<ExamAttempt> findByStudent(User student);
+
+    // Tìm tất cả bài làm của 1 kỳ thi (truyền vào cả Object Exam)
     List<ExamAttempt> findByExam(Exam exam);
+
+    // Tìm tất cả bài làm của 1 kỳ thi theo ID (Dùng cho Xuất Excel và Xem điểm)
+    List<ExamAttempt> findByExamId(Long examId);
 }

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chi tiết Lớp học | HUTECH</title>
+    <th:block th:replace="~{layout :: link-css}"></th:block>
+    <th:block th:replace="~{layout :: custom-css}"></th:block>
+    <style>
+        .copy-badge { cursor: pointer; transition: 0.2s; }
+        .copy-badge:hover { background-color: #ffc107 !important; color: #000 !important; }
+        .nav-pills .nav-link.active { background-color: #0d6efd; box-shadow: 0 4px 12px rgba(13,110,253,0.2); }
+    </style>
+</head>
+<body class="bg-light d-flex flex-column h-100">
+<div th:replace="~{layout :: header}"></div>
+
+<div class="container py-4 flex-shrink-0">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/teacher/classes" class="text-decoration-none">Lớp học</a></li>
+                <li class="breadcrumb-item active fw-bold">Chi tiết lớp</li>
+            </ol>
+        </nav>
+        <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="deleteCurrentClass()">
+            <i class="bi bi-trash"></i> Xóa lớp này
+        </button>
+    </div>
+
+    <input type="hidden" id="hiddenClassId" th:value="${classId}">
+
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+        <div class="row g-0">
+            <div class="col-md-8 p-4 bg-white">
+                <h2 id="displayClassName" class="fw-bold text-dark mb-2 text-primary">Đang tải tên lớp...</h2>
+                <div class="text-secondary small">Mã mời:
+                    <span id="displayInviteCode" class="badge bg-primary-subtle text-primary fs-6 copy-badge ms-1" onclick="copyToClipboard(this.innerText)">...</span>
+                </div>
+            </div>
+            <div class="col-md-4 bg-primary text-white p-4 d-flex align-items-center justify-content-around">
+                <div class="text-center">
+                    <div class="h2 fw-bold mb-0" id="examCountHeader">0</div>
+                    <div class="small opacity-75">Kỳ thi</div>
+                </div>
+                <div class="text-center">
+                    <div class="h2 fw-bold mb-0" id="studentCountHeader">0</div>
+                    <div class="small opacity-75">Sinh viên</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-white border-0 pt-3">
+            <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                <li class="nav-item"><button class="nav-link active me-2" data-bs-toggle="tab" data-bs-target="#tab-exams">Kỳ thi</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-students">Sinh viên</button></li>
+            </ul>
+        </div>
+        <div class="card-body p-4 pt-0">
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="tab-exams">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold m-0">Đề thi trong lớp</h5>
+                        <button class="btn btn-primary rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#createExamModal">+ Tạo đề mới</button>
+                    </div>
+                    <table class="table align-middle">
+                        <thead class="table-light"><tr><th>STT</th><th>Tên Kỳ Thi</th><th>Mã Thi</th><th class="text-end">Thao tác</th></tr></thead>
+                        <tbody id="examListBody"></tbody>
+                    </table>
+                </div>
+                <div class="tab-pane fade" id="tab-students">
+                    <table class="table align-middle">
+                        <thead class="table-light"><tr><th>STT</th><th>Họ tên</th><th>Email</th></tr></thead>
+                        <tbody id="studentListBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createExamModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0"><h5 class="fw-bold">Tạo đề thi mới</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body py-0">
+                <label class="small fw-bold text-secondary">TÊN BÀI KIỂM TRA</label>
+                <input type="text" class="form-control bg-light border-0" id="examTitleInput" placeholder="Ví dụ: Kiểm tra cuối kỳ">
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-primary w-100 rounded-pill fw-bold py-2" onclick="createExam()">BẮT ĐẦU TẠO</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{layout :: footer}"></div>
+<script th:src="@{/js/class-detail.js}"></script>
+</body>
+</html>

@@ -21,162 +21,142 @@ public class ClassService {
     private final ClassRepository classRepository;
     private final IUserRepository userRepository;
 
-    public List<ClassEntity> getAllClasses() {
+    // Hàm tiện ích để lấy User hiện tại nhanh hơn
+    private User getCurrentUser() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof User) {
-            User currentUser = (User) principal;
-            if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"))) {
-                return classRepository.findAll();
-            } else if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("teacher"))) {
-                return classRepository.findByTeacher(currentUser);
-            } else if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("student"))) {
-                return classRepository.findByStudents_Id(currentUser.getId());
-            }
+            return (User) principal;
+        }
+        throw new AccessDeniedException("User chưa đăng nhập hoặc không hợp lệ");
+    }
+
+    public List<ClassEntity> getAllClasses() {
+        User currentUser = getCurrentUser();
+        if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"))) {
+            return classRepository.findAll();
+        } else if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("teacher"))) {
+            return classRepository.findByTeacher(currentUser);
+        } else if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("student"))) {
+            return classRepository.findByStudents_Id(currentUser.getId());
         }
         return List.of();
     }
 
     public Optional<ClassEntity> getClassById(Long id) {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof User) {
-            User currentUser = (User) principal;
-            Optional<ClassEntity> classOptional = classRepository.findById(id);
-            
-            if (classOptional.isPresent()) {
-                ClassEntity cls = classOptional.get();
-                if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"))) {
-                    return classOptional;
-                }
-                if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("teacher")) 
-                        && cls.getTeacher().getId().equals(currentUser.getId())) {
-                    return classOptional;
-                }
-                if (currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("student"))
-                        && cls.getStudents().stream().anyMatch(s -> s.getId().equals(currentUser.getId()))) {
-                    return classOptional;
-                }
-            }
+        User currentUser = getCurrentUser();
+        ClassEntity cls = classRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lớp học với ID: " + id));
+
+        // Kiểm tra quyền xem chi tiết
+        boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
+        boolean isTeacherOwner = cls.getTeacher().getId().equals(currentUser.getId());
+        boolean isEnrolledStudent = cls.getStudents().stream().anyMatch(s -> s.getId().equals(currentUser.getId()));
+
+        if (isAdmin || isTeacherOwner || isEnrolledStudent) {
+            return Optional.of(cls);
         }
-        return Optional.empty();
+        throw new AccessDeniedException("Bạn không có quyền xem thông tin lớp này");
     }
 
     @Transactional
     public ClassEntity createClass(ClassEntity newClass) {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof User) {
-            User currentUser = (User) principal;
-            
-            boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
-            boolean isTeacher = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("teacher"));
+        User currentUser = getCurrentUser();
+        boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
+        boolean isTeacher = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("teacher"));
 
-            if (!isAdmin && !isTeacher) {
-                 throw new AccessDeniedException("Only teachers and admins can create classes");
-            }
-            
-            if (isTeacher) {
-                User managedTeacher = userRepository.findById(currentUser.getId())
-                    .orElseThrow(() -> new IllegalStateException("Current teacher not found in database"));
-                newClass.setTeacher(managedTeacher);
-            } else { // isAdmin
-                 if (newClass.getTeacher() == null || newClass.getTeacher().getId() == null) {
-                    throw new IllegalArgumentException("Admin must specify a teacher ID when creating a class.");
-                }
-                User teacher = userRepository.findById(newClass.getTeacher().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Specified teacher with ID " + newClass.getTeacher().getId() + " not found."));
-                newClass.setTeacher(teacher);
-            }
-            
-            if (newClass.getInviteCode() == null || newClass.getInviteCode().isEmpty()) {
-                newClass.setInviteCode(UUID.randomUUID().toString().substring(0, 8));
-            }
-            return classRepository.save(newClass);
+        if (!isAdmin && !isTeacher) {
+            throw new AccessDeniedException("Chỉ Giáo viên hoặc Admin mới được tạo lớp");
         }
-        throw new AccessDeniedException("User not authenticated");
+
+        if (isTeacher) {
+            User managedTeacher = userRepository.findById(currentUser.getId()).orElseThrow();
+            newClass.setTeacher(managedTeacher);
+        } else {
+            if (newClass.getTeacher() == null || newClass.getTeacher().getId() == null) {
+                throw new IllegalArgumentException("Admin phải chỉ định ID Giáo viên cho lớp học.");
+            }
+            User teacher = userRepository.findById(newClass.getTeacher().getId()).orElseThrow();
+            newClass.setTeacher(teacher);
+        }
+
+        if (newClass.getInviteCode() == null || newClass.getInviteCode().isEmpty()) {
+            newClass.setInviteCode(UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        }
+
+        newClass.setCreatedAt(java.time.LocalDateTime.now());
+        return classRepository.save(newClass);
     }
 
     @Transactional
     public ClassEntity updateClass(Long id, ClassEntity classDetails) {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof User) {
-            User currentUser = (User) principal;
-            Optional<ClassEntity> existingClassOpt = classRepository.findById(id);
-            if (existingClassOpt.isPresent()) {
-                ClassEntity existingClass = existingClassOpt.get();
-                
-                boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
-                boolean isTeacher = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("teacher"));
-                boolean isOwner = existingClass.getTeacher().getId().equals(currentUser.getId());
+        User currentUser = getCurrentUser();
+        ClassEntity existingClass = classRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Lớp không tồn tại"));
 
-                if (isAdmin || (isTeacher && isOwner)) {
-                    existingClass.setClassName(classDetails.getClassName());
-                    return classRepository.save(existingClass);
-                }
-                throw new AccessDeniedException("You do not have permission to update this class");
-            }
-            return null;
+        boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
+        boolean isOwner = existingClass.getTeacher().getId().equals(currentUser.getId());
+
+        if (isAdmin || isOwner) {
+            existingClass.setClassName(classDetails.getClassName());
+            return classRepository.save(existingClass);
         }
-        throw new AccessDeniedException("User not authenticated");
+        throw new AccessDeniedException("Bạn không có quyền sửa lớp này");
     }
 
     @Transactional
     public void deleteClass(Long id) {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof User) {
-            User currentUser = (User) principal;
-            Optional<ClassEntity> existingClassOpt = classRepository.findById(id);
-            if (existingClassOpt.isPresent()) {
-                ClassEntity existingClass = existingClassOpt.get();
-                
-                boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
-                boolean isTeacher = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("teacher"));
-                boolean isOwner = existingClass.getTeacher().getId().equals(currentUser.getId());
+        User currentUser = getCurrentUser();
+        ClassEntity existingClass = classRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lớp để xóa"));
 
-                 if (isAdmin || (isTeacher && isOwner)) {
-                    classRepository.deleteById(id);
-                } else {
-                     throw new AccessDeniedException("You do not have permission to delete this class");
-                }
-            }
+        boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
+        boolean isOwner = existingClass.getTeacher().getId().equals(currentUser.getId());
+
+        if (isAdmin || isOwner) {
+            // Lưu ý: Đảm bảo ClassEntity có cascade = CascadeType.ALL cho list Exams
+            classRepository.delete(existingClass);
+        } else {
+            throw new AccessDeniedException("Bạn không có quyền xóa lớp này");
         }
     }
 
     @Transactional
     public ClassEntity joinClass(String inviteCode) {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof User) {
-            User currentUser = (User) principal;
-            if (currentUser.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("student"))) {
-                throw new AccessDeniedException("Only students can join classes.");
-            }
-
-            ClassEntity classToJoin = classRepository.findByInviteCode(inviteCode)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid invite code."));
-
-            User managedStudent = userRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new IllegalStateException("Current student not found in database"));
-
-            classToJoin.getStudents().add(managedStudent);
-            return classRepository.save(classToJoin);
+        User currentUser = getCurrentUser();
+        if (currentUser.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("student"))) {
+            throw new AccessDeniedException("Chỉ sinh viên mới được tham gia lớp học.");
         }
-        throw new AccessDeniedException("User not authenticated");
+
+        ClassEntity classToJoin = classRepository.findByInviteCode(inviteCode)
+                .orElseThrow(() -> new IllegalArgumentException("Mã mời không chính xác."));
+
+        User managedStudent = userRepository.findById(currentUser.getId()).orElseThrow();
+        classToJoin.getStudents().add(managedStudent);
+        return classRepository.save(classToJoin);
     }
 
     public Set<User> getStudentsInClass(Long classId) {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof User) {
-            User currentUser = (User) principal;
-            ClassEntity classEntity = classRepository.findById(classId)
-                .orElseThrow(() -> new IllegalArgumentException("Class not found."));
+        User currentUser = getCurrentUser();
+        ClassEntity classEntity = classRepository.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("Lớp không tồn tại."));
 
-            boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
-            boolean isTeacher = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("teacher"));
-            boolean isOwner = classEntity.getTeacher().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("admin"));
+        boolean isOwner = classEntity.getTeacher().getId().equals(currentUser.getId());
 
-            if (isAdmin || (isTeacher && isOwner)) {
-                return classEntity.getStudents();
-            }
-            throw new AccessDeniedException("You do not have permission to view students in this class.");
+        if (isAdmin || isOwner) {
+            return classEntity.getStudents();
         }
-        throw new AccessDeniedException("User not authenticated");
+        throw new AccessDeniedException("Bạn không có quyền xem danh sách sinh viên lớp này.");
+    }
+
+    @Transactional
+    public void leaveClass(Long classId) {
+        User currentUser = getCurrentUser(); // Hàm tiện ích lấy user đang đăng nhập
+        ClassEntity cls = classRepository.findById(classId)
+                .orElseThrow(() -> new IllegalArgumentException("Lớp không tồn tại"));
+
+        // Xóa sinh viên khỏi Set students của lớp
+        cls.getStudents().removeIf(s -> s.getId().equals(currentUser.getId()));
+        classRepository.save(cls);
     }
 }

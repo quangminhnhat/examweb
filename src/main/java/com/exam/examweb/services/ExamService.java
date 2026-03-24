@@ -8,11 +8,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.io.ByteArrayOutputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -88,6 +91,18 @@ public class ExamService {
         Exam exam = examRepository.findByExamCode(examCode)
             .orElseThrow(() -> new IllegalArgumentException("Invalid exam code."));
 
+        if (exam.getIsOpen() == null || !exam.getIsOpen()) {
+            throw new IllegalArgumentException("Kỳ thi hiện đang bị khóa bởi Giáo viên.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (exam.getStartTime() != null && now.isBefore(exam.getStartTime())) {
+            throw new IllegalArgumentException("Chưa đến thời gian làm bài.");
+        }
+        if (exam.getEndTime() != null && now.isAfter(exam.getEndTime())) {
+            throw new IllegalArgumentException("Kỳ thi đã kết thúc.");
+        }
+
         boolean isEnrolled = exam.getClassEntity() == null || exam.getClassEntity().getStudents().stream()
             .anyMatch(s -> s.getId().equals(currentUser.getId()));
 
@@ -146,5 +161,142 @@ public class ExamService {
         attempt.setScore(totalScore);
         attempt.setSubmittedAt(java.time.LocalDateTime.now());
         return examAttemptRepository.save(attempt);
+    }
+
+    @Transactional
+    public Question updateQuestion(Long questionId, Question questionDetails) {
+        User currentUser = getCurrentUser();
+        Question existingQuestion = questionRepository.findById(questionId)
+                .orElseThrow(() -> new IllegalArgumentException("Question not found with ID: " + questionId));
+
+        // Kiểm tra bảo mật: Chỉ giáo viên tạo kỳ thi mới được sửa câu hỏi
+        if (!existingQuestion.getExam().getTeacher().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("You can only update questions in your own exams.");
+        }
+
+        // Cập nhật các trường dữ liệu
+        existingQuestion.setContent(questionDetails.getContent());
+        existingQuestion.setOptionA(questionDetails.getOptionA());
+        existingQuestion.setOptionB(questionDetails.getOptionB());
+        existingQuestion.setOptionC(questionDetails.getOptionC());
+        existingQuestion.setOptionD(questionDetails.getOptionD());
+        existingQuestion.setCorrectOption(questionDetails.getCorrectOption());
+
+        return questionRepository.save(existingQuestion);
+    }
+
+    @Transactional
+    public void deleteQuestion(Long questionId) {
+        User currentUser = getCurrentUser();
+        Question existingQuestion = questionRepository.findById(questionId)
+                .orElseThrow(() -> new IllegalArgumentException("Question not found with ID: " + questionId));
+
+        // Kiểm tra bảo mật
+        if (!existingQuestion.getExam().getTeacher().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("You can only delete questions in your own exams.");
+        }
+
+        questionRepository.delete(existingQuestion);
+    }
+
+    public List<ExamAttempt> getAttemptsByExamId(Long examId) {
+        return examAttemptRepository.findByExamId(examId);
+    }
+
+    @Transactional
+    public boolean toggleExamStatus(Long examId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi"));
+        boolean currentStatus = Boolean.TRUE.equals(exam.getIsOpen());
+        exam.setIsOpen(!currentStatus);
+
+        examRepository.save(exam);
+        return exam.getIsOpen();
+    }
+    //excel
+    public byte[] exportToExcel(Long examId) throws java.io.IOException {
+        List<ExamAttempt> attempts = examAttemptRepository.findByExamId(examId);
+
+        try (org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Kết quả thi");
+
+            // Tạo dòng tiêu đề (Header)
+            org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("STT");
+            headerRow.createCell(1).setCellValue("Tên Sinh Viên");
+            headerRow.createCell(2).setCellValue("Điểm Số");
+            headerRow.createCell(3).setCellValue("Thời Gian Nộp");
+
+            // Đổ dữ liệu từ danh sách vào các dòng
+            int rowIdx = 1;
+            for (ExamAttempt attempt : attempts) {
+                org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(rowIdx - 1);
+                row.createCell(1).setCellValue(attempt.getStudent().getFullName()); // Hoặc getUsername()
+                row.createCell(2).setCellValue(attempt.getScore());
+                row.createCell(3).setCellValue(attempt.getSubmittedAt().toString());
+            }
+
+            // Xuất ra mảng byte
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Transactional
+    public void updateSchedule(Long examId, String startTimeStr, String endTimeStr) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+        if (startTimeStr != null && !startTimeStr.isEmpty()) {
+            exam.setStartTime(LocalDateTime.parse(startTimeStr, formatter));
+        }
+        if (endTimeStr != null && !endTimeStr.isEmpty()) {
+            exam.setEndTime(LocalDateTime.parse(endTimeStr, formatter));
+        }
+
+        examRepository.save(exam);
+    }
+
+    public Map<String, Object> getAttemptDetails(Long attemptId) {
+        ExamAttempt attempt = examAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lượt thi"));
+
+        Exam exam = attempt.getExam();
+        LocalDateTime startTime = attempt.getCreatedAt();
+        LocalDateTime endTime = startTime.plusMinutes(exam.getDuration());
+        long remainingSeconds = java.time.Duration.between(LocalDateTime.now(), endTime).getSeconds();
+
+        // THUẬT TOÁN TÍNH ĐIỂM
+        int totalQuestions = exam.getQuestions().size();
+
+        // Đếm số câu trả lời đúng từ List<Answer>
+        long correctAnswersCount = attempt.getAnswers().stream()
+                .filter(answer -> answer.isCorrect())
+                .count();
+
+        // Quy đổi ra thang điểm 10 (Ví dụ: 3/4 câu -> 7.5 điểm)
+        double finalScore10 = 0.0;
+        if (totalQuestions > 0) {
+            finalScore10 = ((double) correctAnswersCount / totalQuestions) * 10.0;
+        }
+
+        // Làm tròn đến 2 chữ số thập phân (Ví dụ: 8.3333 -> 8.33)
+        finalScore10 = Math.round(finalScore10 * 100.0) / 100.0;
+
+        // Đóng gói dữ liệu gửi về Frontend
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("exam", exam);
+        response.put("attempt", attempt);
+        response.put("remainingSeconds", Math.max(0, remainingSeconds));
+
+        // Gửi kèm kết quả đã tính toán chính xác 100%
+        response.put("correctCount", correctAnswersCount);
+        response.put("finalScore", finalScore10);
+
+        return response;
     }
 }

@@ -7,6 +7,9 @@ import com.exam.examweb.services.ExamService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.List;
 import java.util.Map;
@@ -52,5 +55,58 @@ public class ExamApiController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+    // API Cập nhật câu hỏi
+    @PutMapping("/questions/{questionId}")
+    public ResponseEntity<Void> updateQuestion(@PathVariable Long questionId, @RequestBody Question questionDetails) {
+        examService.updateQuestion(questionId, questionDetails);
+        return ResponseEntity.ok().build(); // Chỉ báo OK (Mã 200), không gửi kèm Object để tránh lỗi đóng gói JSON
+    }
+
+    // API Xóa câu hỏi
+    @DeleteMapping("/questions/{questionId}")
+    public ResponseEntity<Void> deleteQuestion(@PathVariable Long questionId) {
+        examService.deleteQuestion(questionId); // Bạn cần tạo hàm deleteQuestion trong ExamService
+        return ResponseEntity.ok().build();
+    }
+
+    // API Lấy danh sách điểm của học sinh trong 1 kỳ thi
+    @GetMapping("/{examId}/results")
+    public ResponseEntity<List<ExamAttempt>> getExamResults(@PathVariable Long examId) {
+        // Trả về danh sách bài làm (Bạn cần tạo hàm getAttemptsByExamId trong ExamService)
+        return ResponseEntity.ok(examService.getAttemptsByExamId(examId));
+    }
+
+    // API Đổi trạng thái Đóng/Mở thủ công
+    @PatchMapping("/{examId}/toggle-status")
+    public ResponseEntity<Boolean> toggleExamStatus(@PathVariable Long examId) {
+        return ResponseEntity.ok(examService.toggleExamStatus(examId));
+    }
+
+    // API Xuất dữ liệu ra file Excel
+    @GetMapping("/{examId}/export")
+    public ResponseEntity<byte[]> exportResultsToExcel(@PathVariable Long examId) {
+        try {
+            byte[] excelContent = examService.exportToExcel(examId);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDispositionFormData("attachment", "Danh_Sach_Diem_Thi.xlsx");
+            return new ResponseEntity<>(excelContent, headers, org.springframework.http.HttpStatus.OK);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    // API Hẹn giờ
+    @PutMapping("/{examId}/schedule")
+    public ResponseEntity<Void> updateSchedule(
+            @PathVariable Long examId,
+            @RequestBody Map<String, String> schedule) {
+        examService.updateSchedule(examId, schedule.get("startTime"), schedule.get("endTime"));
+        return ResponseEntity.ok().build();
+    }
+    // time nộp bài học sinh
+    @GetMapping("/attempts/{attemptId}")
+    public ResponseEntity<Map<String, Object>> getAttempt(@PathVariable Long attemptId) {
+        return ResponseEntity.ok(examService.getAttemptDetails(attemptId));
     }
 }

@@ -7,6 +7,8 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -46,6 +48,9 @@ public class ClassEntity {
     @ToString.Exclude
     @Builder.Default
     private Set<User> students = new HashSet<>();
+
+    @OneToMany(mappedBy = "classEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Exam> exams = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

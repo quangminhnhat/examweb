@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quản lý lớp học - Giáo viên</title>
+  <th:block th:replace="~{layout :: link-css}"></th:block>
+  <th:block th:replace="~{layout :: custom-css}"></th:block>
+  <style>
+    .table-hover tbody tr:hover { background-color: #f8f9fa; transition: 0.3s; }
+    .action-btn { font-size: 0.85rem; font-weight: 500; letter-spacing: 0.5px; }
+  </style>
+</head>
+<body class="d-flex flex-column h-100 bg-light">
+<div th:replace="~{layout :: header}"></div>
+
+<div class="container flex-shrink-0 mt-5">
+  <div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+      <h2 class="fw-bold text-dark mb-1">Danh sách Lớp học</h2>
+      <span class="text-secondary">Quản lý và theo dõi các lớp học của bạn</span>
+    </div>
+    <button class="btn btn-primary px-4 rounded-pill fw-bold shadow-sm" onclick="openModalForCreate()">
+      + Thêm Lớp Mới
+    </button>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+        <tr>
+          <th class="py-3 px-4 border-bottom-0">ID</th>
+          <th class="py-3 px-4 border-bottom-0">Tên Lớp</th>
+          <th class="py-3 px-4 border-bottom-0">Mã Mời</th>
+          <th class="py-3 px-4 border-bottom-0 text-end">Thao tác</th>
+        </tr>
+        </thead>
+        <tbody id="classListBody">
+        <tr><td colspan="4" class="text-center py-4 text-muted">Đang tải dữ liệu...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="classModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom-0 pb-0">
+        <h5 class="modal-title fw-bold" id="modalTitle">Tạo Lớp Học Mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="hiddenClassId"> <div class="mb-3">
+        <label class="form-label text-secondary fw-bold small uppercase">Tên Lớp Học</label>
+        <input type="text" class="form-control form-control-lg bg-light border-0" id="classNameInput" placeholder="Nhập tên lớp...">
+      </div>
+      </div>
+      <div class="modal-footer border-top-0 pt-0">
+        <button type="button" class="btn btn-light px-4 rounded-pill" data-bs-dismiss="modal">Hủy bỏ</button>
+        <button type="button" class="btn btn-primary px-4 rounded-pill fw-bold" onclick="saveClass()">Lưu Lớp Học</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div th:replace="~{layout :: footer}"></div>
+<script th:src="@{/js/teacher-classes.js}"></script>
+</body>
+</html>

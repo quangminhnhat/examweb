@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chi tiết Kỳ thi</title>
+    <th:block th:replace="~{layout :: link-css}"></th:block>
+    <th:block th:replace="~{layout :: custom-css}"></th:block>
+    <style>
+        .badge-code { cursor: pointer; transition: 0.2s; border: 1px dashed #6c757d; }
+        .badge-code:hover { background: #e9ecef; transform: scale(1.05); }
+        .card-stats { border-left: 4px solid #0d6efd; }
+        .nav-tabs .nav-link { color: #6c757d; border: none; padding: 1rem 1.5rem; }
+        .nav-tabs .nav-link.active { color: #0d6efd; border-bottom: 3px solid #0d6efd; background: none; }
+    </style>
+</head>
+<body class="d-flex flex-column h-100 bg-light">
+<div th:replace="~{layout :: header}"></div>
+
+<div class="container flex-shrink-0 mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="/teacher/classes">Lớp học</a></li>
+                    <li class="breadcrumb-item active">Chi tiết kỳ thi</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold mb-0" id="examTitleHeader">Đang tải tên kỳ thi...</h2>
+            <div class="mt-2">
+                <span class="text-secondary small me-3">Mã đề:
+                    <span class="badge bg-white text-dark badge-code" id="examCodeDisplay" onclick="copyText(this)">---</span>
+                </span>
+            </div>
+        </div>
+        <div class="text-end">
+            <button class="btn btn-primary rounded-pill fw-bold shadow-sm px-4" onclick="openModalForCreateQuestion()">
+                <i class="bi bi-plus-lg"></i> Thêm Câu Hỏi
+            </button>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+        <ul class="nav nav-tabs bg-white border-bottom" id="examTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#questionsTab">
+                    <i class="bi bi-list-check"></i> Câu Hỏi
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#settingsTab">
+                    <i class="bi bi-gear"></i> Cài Đặt & Thời Gian
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#resultsTab">
+                    <i class="bi bi-trophy"></i> Kết Quả Bài Làm
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content p-4 bg-white">
+            <div class="tab-pane fade show active" id="questionsTab">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                        <tr>
+                            <th width="8%">STT</th>
+                            <th>Nội dung câu hỏi</th>
+                            <th width="30%">Đáp án</th>
+                            <th width="15%" class="text-end">Thao tác</th>
+                        </tr>
+                        </thead>
+                        <tbody id="questionListBody">
+                        <tr><td colspan="4" class="text-center py-5">Đang tải câu hỏi...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="settingsTab">
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="p-3 border rounded-3 mb-4">
+                            <h6 class="fw-bold">Trạng thái hiện tại</h6>
+                            <div class="form-check form-switch mt-3">
+                                <input class="form-check-input" type="checkbox" id="examStatusToggle" onchange="toggleStatus()" style="transform: scale(1.3);">
+                                <label class="form-check-label ms-2 fw-bold" for="examStatusToggle" id="statusLabel">Đang đóng</label>
+                            </div>
+                        </div>
+                        <div class="p-3 border rounded-3">
+                            <h6 class="fw-bold mb-3">Hẹn giờ tự động</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="small fw-bold text-secondary">Mở đề thi</label>
+                                    <input type="datetime-local" class="form-control" id="startTimeInput">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="small fw-bold text-secondary">Đóng đề thi</label>
+                                    <input type="datetime-local" class="form-control" id="endTimeInput">
+                                </div>
+                            </div>
+                            <button class="btn btn-dark mt-4 w-100 fw-bold" onclick="saveSchedule()">Cập nhật lịch thi</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="resultsTab">
+                <div class="d-flex justify-content-between mb-3">
+                    <h5 class="fw-bold">Danh sách điểm số</h5>
+                    <a th:href="@{/api/exams/{id}/export(id=${examId})}" class="btn btn-sm btn-success fw-bold">
+                        Xuất Excel
+                    </a>
+                </div>
+                <table class="table table-sm">
+                    <thead>
+                    <tr>
+                        <th>Sinh viên</th>
+                        <th>Điểm</th>
+                        <th>Ngày nộp</th>
+                    </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                    <tr><td colspan="3" class="text-center py-4">Chưa có kết quả</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="questionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg border-0">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="fw-bold" id="questionModalTitle">Thêm Câu Hỏi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <input type="hidden" id="hiddenQuestionId">
+                <div class="card border-0 shadow-sm p-3 mb-3">
+                    <label class="small fw-bold text-primary mb-2">NỘI DUNG</label>
+                    <textarea class="form-control border-0" id="questionContent" rows="3" placeholder="Ví dụ: 1 + 1 bằng mấy?"></textarea>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6"><input type="text" class="form-control" id="optionA" placeholder="Đáp án A"></div>
+                    <div class="col-6"><input type="text" class="form-control" id="optionB" placeholder="Đáp án B"></div>
+                    <div class="col-6"><input type="text" class="form-control" id="optionC" placeholder="Đáp án C"></div>
+                    <div class="col-6"><input type="text" class="form-control" id="optionD" placeholder="Đáp án D"></div>
+                </div>
+                <div class="mt-3 card border-success p-3">
+                    <label class="small fw-bold text-success mb-2">ĐÁP ÁN ĐÚNG</label>
+                    <select class="form-select border-0 bg-transparent fw-bold text-success" id="correctAnswer">
+                        <option value="A">Câu A</option>
+                        <option value="B">Câu B</option>
+                        <option value="C">Câu C</option>
+                        <option value="D">Câu D</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary w-100 py-2 fw-bold rounded-pill" onclick="saveQuestion()">LƯU CÂU HỎI</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="hiddenExamId" th:value="${examId}">
+<div th:replace="~{layout :: footer}"></div>
+<script th:src="@{/js/exam-detail.js}"></script>
+</body>
+</html>

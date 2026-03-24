@@ -1,6 +1,7 @@
 package com.exam.examweb.entities;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties; // BƯỚC 1: Thêm import này
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,14 +34,16 @@ public class Exam {
 
     @ManyToOne
     @JoinColumn(name = "teacher_id", nullable = false)
+    @JsonIgnoreProperties({"exams", "classes"}) // Chặn vòng lặp với User
     private User teacher;
 
     @ManyToOne
     @JoinColumn(name = "class_id")
+    @JsonIgnoreProperties("exams") // BƯỚC 2: THÊM DÒNG NÀY ĐỂ CHẶN VÒNG LẶP JSON
     private ClassEntity classEntity;
 
     @Column(nullable = false)
-    private int duration; // in minutes
+    private int duration;
 
     @Builder.Default
     private int totalScore = 100;
@@ -56,4 +59,14 @@ public class Exam {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+
+    @Column(name = "start_time")
+    private LocalDateTime startTime;
+
+    @Column(name = "end_time")
+    private LocalDateTime endTime;
+
+    @Builder.Default
+    @Column(name = "is_open")
+    private Boolean isOpen = false;
 }

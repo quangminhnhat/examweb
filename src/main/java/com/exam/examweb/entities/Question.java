@@ -1,6 +1,7 @@
 package com.exam.examweb.entities;
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,6 +25,7 @@ public class Question {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "exam_id", nullable = false)
     @ToString.Exclude
+    @JsonIgnore
     private Exam exam;
 
     @Column(nullable = false, columnDefinition = "TEXT")

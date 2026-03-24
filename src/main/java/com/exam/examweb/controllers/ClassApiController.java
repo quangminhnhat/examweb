@@ -17,6 +17,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Slf4j
 public class ClassApiController {
+
+    // Chỉ cần dùng Service là đủ, không cần gọi trực tiếp Repository ở đây
     private final ClassService classService;
 
     @GetMapping
@@ -33,7 +35,7 @@ public class ClassApiController {
 
     @PostMapping
     public ResponseEntity<ClassEntity> createClass(@RequestBody ClassEntity newClass) {
-        log.info("Received request to create class: {}", newClass);
+        log.info("Yêu cầu tạo lớp học mới: {}", newClass.getClassName());
         return ResponseEntity.ok(classService.createClass(newClass));
     }
 
@@ -42,13 +44,14 @@ public class ClassApiController {
         ClassEntity updatedClass = classService.updateClass(id, classDetails);
         if (updatedClass != null) {
             return ResponseEntity.ok(updatedClass);
-        } else {
-            return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.notFound().build();
     }
 
+    // GIỮ LẠI MỘT HÀM XÓA DUY NHẤT VÀ GỌI QUA SERVICE
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteClass(@PathVariable Long id) {
+        log.warn("Đang thực hiện xóa lớp học ID: {}", id);
         classService.deleteClass(id);
         return ResponseEntity.ok().build();
     }
@@ -56,9 +59,8 @@ public class ClassApiController {
     @PostMapping("/join")
     public ResponseEntity<ClassEntity> joinClass(@RequestBody Map<String, String> payload) {
         String inviteCode = payload.get("inviteCode");
-        if (inviteCode == null) {
-            return ResponseEntity.badRequest().build();
-        }
+        if (inviteCode == null) return ResponseEntity.badRequest().build();
+
         try {
             return ResponseEntity.ok(classService.joinClass(inviteCode));
         } catch (IllegalArgumentException e) {
@@ -73,5 +75,11 @@ public class ClassApiController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @DeleteMapping("/{classId}/leave")
+    public ResponseEntity<Void> leaveClass(@PathVariable Long classId) {
+        classService.leaveClass(classId);
+        return ResponseEntity.ok().build();
     }
 }
