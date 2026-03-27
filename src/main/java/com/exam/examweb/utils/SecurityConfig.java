@@ -6,6 +6,7 @@ import com.exam.examweb.services.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +31,7 @@ import java.util.Optional;
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
     private final OAuthService oAuthService;
     private final UserService userService;
@@ -72,17 +74,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/",
-                                "/oauth/**", "/register", "/error", "/role-selection")
+                                "/oauth/**", "/register", "/error", "/role-selection",
+                                "/forgot-password", "/reset-password")
                         .permitAll()
                         .requestMatchers("/api/auth/**")
                         .permitAll()
                         .requestMatchers("/api/management/**").hasAuthority("admin")
-                        .requestMatchers("/admin/**")
-                        .hasAnyAuthority("admin")
-                        .requestMatchers("/teacher/**")
-                        .hasAnyAuthority("teacher")
-                        .requestMatchers("/student/**")
-                        .hasAnyAuthority("student")
+                        .requestMatchers("/admin/**").hasAuthority("admin")
+                        .requestMatchers("/teacher/**").hasAnyAuthority("teacher", "admin")
+                        .requestMatchers("/student/**").hasAnyAuthority("student", "admin")
                         .anyRequest().authenticated()
                 ).logout(logout -> logout
                         .logoutUrl("/logout")

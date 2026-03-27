@@ -84,6 +84,17 @@ public class ExamService {
     }
 
     @Transactional
+    public void deleteExam(Long examId) {
+        Exam exam = examRepository.findById(examId)
+                .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+        
+        if (!hasManagePermission(exam)) {
+            throw new AccessDeniedException("Permission denied.");
+        }
+        examRepository.delete(exam);
+    }
+
+    @Transactional
     public Question addQuestionToExam(Long examId, Question question) {
         Exam exam = examRepository.findById(examId)
             .orElseThrow(() -> new IllegalArgumentException("Exam not found."));

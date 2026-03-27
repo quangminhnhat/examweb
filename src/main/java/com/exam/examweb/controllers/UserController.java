@@ -38,7 +38,12 @@ public class UserController {
             model.addAttribute("errors", errors);
             return "user/register";
         }
-        userService.save(user, role);
+        try {
+            userService.save(user, role);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("errors", new String[]{e.getMessage()});
+            return "user/register";
+        }
         return "redirect:/login";
     }
 

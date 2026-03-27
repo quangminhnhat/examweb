@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Quản lý kỳ thi</title>
+    <th:block th:replace="~{layout :: link-css}"></th:block>
+    <th:block th:replace="~{layout :: custom-css}"></th:block>
+    <style>
+        .search-box {
+            max-width: 400px;
+            border-radius: 12px;
+            padding: 0.6rem 1.2rem;
+            border: 2px solid #e9ecef;
+            transition: 0.3s;
+        }
+        .search-box:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13,110,253,0.1);
+        }
+        .sort-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="d-flex flex-column h-100">
+<div th:replace="~{layout :: header}"></div>
+
+<main class="flex-shrink-0 py-5">
+    <div class="container">
+        <!-- Header & Controls -->
+        <div class="row align-items-center mb-4 g-3">
+            <div class="col-md-4">
+                <h2 class="fw-bold text-dark mb-0"><i class="bi bi-shield-lock me-2"></i>Quản lý kỳ thi</h2>
+            </div>
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 rounded-start-pill ps-3">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" id="searchInput" class="form-control border-start-0 rounded-end-pill search-box"
+                           placeholder="Tìm theo tên kỳ thi, mã đề hoặc giảng viên..." onkeyup="filterExams()">
+                </div>
+            </div>
+            <div class="col-md-3 text-md-end">
+                <select id="sortSelect" class="form-select sort-select shadow-sm" onchange="sortExams()">
+                    <option value="id_desc">Mới nhất (ID Giảm)</option>
+                    <option value="id_asc">Cũ nhất (ID Tăng)</option>
+                    <option value="title_asc">Tên (A-Z)</option>
+                    <option value="title_desc">Tên (Z-A)</option>
+                    <option value="teacher_asc">Giảng viên (A-Z)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="examTable">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4" style="cursor: pointer;">ID</th>
+                            <th>Tên kỳ thi</th>
+                            <th>Mã đề</th>
+                            <th>Giảng viên</th>
+                            <th>Thời gian</th>
+                            <th>Trạng thái</th>
+                            <th class="text-end pe-4">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="examTableBody">
+                        <tr th:each="exam : ${exams}" class="exam-row"
+                            th:data-id="${exam.id}"
+                            th:data-title="${exam.examTitle != null ? exam.examTitle.toLowerCase() : ''}"
+                            th:data-teacher="${exam.teacher != null && exam.teacher.fullName != null ? exam.teacher.fullName.toLowerCase() : (exam.teacher != null ? exam.teacher.username.toLowerCase() : '')}"
+                            th:data-code="${exam.examCode != null ? exam.examCode.toLowerCase() : ''}">
+                            <td class="ps-4 fw-bold text-muted" th:text="${exam.id}">1</td>
+                            <td>
+                                <div class="fw-bold text-primary exam-title-text" th:text="${exam.examTitle}">Exam Title</div>
+                                <small class="text-muted" th:text="${exam.classEntity != null ? exam.classEntity.className : 'Không thuộc lớp'}"></small>
+                            </td>
+                            <td><code class="fw-bold" th:text="${exam.examCode}">CODE</code></td>
+                            <td class="teacher-name-text" th:text="${exam.teacher != null ? (exam.teacher.fullName != null ? exam.teacher.fullName : exam.teacher.username) : 'N/A'}">Teacher Name</td>
+                            <td th:text="${exam.duration + ' phút'}">45 phút</td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           th:checked="${exam.isOpen}" th:onchange="'toggleStatus(' + ${exam.id} + ')'">
+                                    <span class="badge" th:classappend="${exam.isOpen ? 'bg-success' : 'bg-secondary'}"
+                                          th:text="${exam.isOpen ? 'Đang mở' : 'Đang đóng'}"></span>
+                                </div>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a th:href="@{'/teacher/exams/' + ${exam.id}}" class="btn btn-sm btn-outline-primary rounded-pill px-3 me-2">
+                                    <i class="bi bi-pencil-square me-1"></i> Sửa
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                        th:onclick="'deleteExam(' + ${exam.id} + ')'">
+                                    <i class="bi bi-trash3 me-1"></i> Xóa
+                                </button>
+                            </td>
+                        </tr>
+                        <tr id="noResultsRow" style="display: none;">
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-search-heart display-4 d-block mb-3"></i>
+                                Không tìm thấy kỳ thi nào phù hợp.
+                            </td>
+                        </tr>
+                        <tr th:if="${exams.empty}">
+                            <td colspan="7" class="text-center py-5 text-muted">Không có kỳ thi nào.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div th:replace="~{layout :: footer}"></div>
+
+<script>
+function filterExams() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.exam-row');
+    let hasResults = false;
+
+    rows.forEach(row => {
+        const title = row.getAttribute('data-title') || "";
+        const teacher = row.getAttribute('data-teacher') || "";
+        const code = row.getAttribute('data-code') || "";
+
+        if (title.includes(query) || teacher.includes(query) || code.includes(query)) {
+            row.style.display = '';
+            hasResults = true;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    document.getElementById('noResultsRow').style.display = hasResults ? 'none' : 'table-row';
+}
+
+function sortExams() {
+    const val = document.getElementById('sortSelect').value;
+    const body = document.getElementById('examTableBody');
+    const rows = Array.from(body.querySelectorAll('.exam-row'));
+
+    rows.sort((a, b) => {
+        if (val === 'id_asc') return parseInt(a.dataset.id) - parseInt(b.dataset.id);
+        if (val === 'id_desc') return parseInt(b.dataset.id) - parseInt(a.dataset.id);
+
+        if (val === 'title_asc') return (a.dataset.title || "").localeCompare(b.dataset.title || "");
+        if (val === 'title_desc') return (b.dataset.title || "").localeCompare(a.dataset.title || "");
+
+        if (val === 'teacher_asc') return (a.dataset.teacher || "").localeCompare(b.dataset.teacher || "");
+
+        return 0;
+    });
+
+    // Re-append rows in new order
+    rows.forEach(row => body.appendChild(row));
+}
+
+function toggleStatus(examId) {
+    fetch(`/api/exams/${examId}/toggle-status`, { method: 'PATCH' })
+    .then(res => { if(res.ok) location.reload(); else alert("Lỗi hệ thống"); });
+}
+
+function deleteExam(examId) {
+    if(confirm("Bạn có chắc chắn muốn xóa kỳ thi này? Mọi dữ liệu liên quan (câu hỏi, bài làm) sẽ bị mất!")) {
+        fetch(`/api/exams/${examId}`, { method: 'DELETE' })
+        .then(res => {
+            if(res.ok) {
+                alert("Đã xóa kỳ thi thành công!");
+                location.reload();
+            } else {
+                alert("Lỗi khi xóa kỳ thi!");
+            }
+        });
+    }
+}
+
+// Initial sort by ID Desc
+document.addEventListener('DOMContentLoaded', sortExams);
+</script>
+</body>
+</html>

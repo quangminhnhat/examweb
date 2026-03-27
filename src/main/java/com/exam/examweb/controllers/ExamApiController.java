@@ -56,6 +56,17 @@ public class ExamApiController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    @DeleteMapping("/{examId}")
+    public ResponseEntity<Void> deleteExam(@PathVariable Long examId) {
+        try {
+            examService.deleteExam(examId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     // API Cập nhật câu hỏi
     @PutMapping("/questions/{questionId}")
     public ResponseEntity<Void> updateQuestion(@PathVariable Long questionId, @RequestBody Question questionDetails) {

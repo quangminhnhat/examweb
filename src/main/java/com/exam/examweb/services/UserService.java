@@ -21,8 +21,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -35,14 +37,19 @@ public class UserService implements UserDetailsService {
     @Transactional(isolation = Isolation.SERIALIZABLE,
             rollbackFor = {Exception.class, Throwable.class})
     public void save(@NotNull User user, String roleName) {
-        // Kiểm tra trùng lặp email trước khi save
+        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
+            throw new IllegalArgumentException("Username '" + user.getUsername() + "' đã tồn tại!");
+        }
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-            throw new IllegalArgumentException("Email already exists: " + user.getEmail());
+            throw new IllegalArgumentException("Email '" + user.getEmail() + "' đã được sử dụng!");
+        }
+        if (user.getPhone() != null && !user.getPhone().isEmpty() && userRepository.findByPhone(user.getPhone()).isPresent()) {
+            throw new IllegalArgumentException("Số điện thoại '" + user.getPhone() + "' đã được đăng ký!");
         }
 
         user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
         user.setProvider(Provider.LOCAL.value);
-        
+
         Long roleId = com.exam.examweb.constants.Role.student.value; 
         if ("teacher".equalsIgnoreCase(roleName)) {
             roleId = com.exam.examweb.constants.Role.teacher.value;
@@ -53,6 +60,34 @@ public class UserService implements UserDetailsService {
             user.getRoles().add(role);
         }
         
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public String createResetPasswordToken(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng với email: " + email));
+
+        String token = UUID.randomUUID().toString();
+        user.setResetPasswordToken(token);
+        user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(30));
+        userRepository.save(user);
+        return token;
+    }
+
+    public Optional<User> findByResetPasswordToken(String token) {
+        return userRepository.findAll().stream()
+                .filter(u -> token.equals(u.getResetPasswordToken()) && 
+                             u.getResetPasswordTokenExpiry() != null && 
+                             u.getResetPasswordTokenExpiry().isAfter(LocalDateTime.now()))
+                .findFirst();
+    }
+
+    @Transactional
+    public void updatePassword(User user, String newPassword) {
+        user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordTokenExpiry(null);
         userRepository.save(user);
     }
 

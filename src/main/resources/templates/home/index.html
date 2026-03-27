@@ -59,9 +59,19 @@
             <a href="/login" class="btn btn-warning btn-lg fw-bold px-4 rounded-pill shadow">Bắt đầu ngay</a>
             <a href="#features" class="btn btn-outline-light btn-lg px-4 rounded-pill">Tìm hiểu thêm</a>
           </div>
-          <div class="d-flex gap-3" sec:authorize="isAuthenticated()">
+          <div class="d-flex flex-wrap gap-3" sec:authorize="isAuthenticated()">
             <a sec:authorize="hasAuthority('student')" href="/student/dashboard" class="btn btn-warning btn-lg fw-bold px-4 rounded-pill">Vào học tập</a>
             <a sec:authorize="hasAuthority('teacher')" href="/teacher/classes" class="btn btn-warning btn-lg fw-bold px-4 rounded-pill">Quản lý lớp</a>
+
+            <!-- Admin Management Quick Links -->
+            <th:block sec:authorize="hasAuthority('admin')">
+              <a href="/admin/users/manage" class="btn btn-danger btn-lg fw-bold px-4 rounded-pill shadow-sm">
+                <i class="bi bi-people me-1"></i> Quản lý người dùng
+              </a>
+              <a href="/admin/exams/manage" class="btn btn-outline-warning btn-lg fw-bold px-4 rounded-pill shadow-sm bg-white">
+                <i class="bi bi-pencil-square me-1"></i> Quản lý kỳ thi
+              </a>
+            </th:block>
           </div>
         </div>
         <div class="col-lg-6 d-none d-lg-block text-center">
