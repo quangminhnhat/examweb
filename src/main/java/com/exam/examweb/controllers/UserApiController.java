@@ -4,6 +4,7 @@ import com.exam.examweb.entities.User;
 import com.exam.examweb.services.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +17,18 @@ import java.util.List;
 public class UserApiController {
 
     private final UserService userService;
+
+    // Enhanced Search API with Pagination and Sorting
+    @GetMapping("/search")
+    public ResponseEntity<Page<User>> searchUsers(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "username") String sortBy,
+            @RequestParam(defaultValue = "asc") String direction) {
+        log.info("GET /api/management/users/search called with keyword: {}", keyword);
+        return ResponseEntity.ok(userService.searchUsers(keyword, page, size, sortBy, direction));
+    }
 
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {

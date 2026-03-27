@@ -1,7 +1,6 @@
 package com.exam.examweb.entities;
 
-import com.fasterxml.jackson.annotation.JsonIdentityInfo;
-import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -18,9 +17,6 @@ import java.util.List;
 @Builder
 @Entity
 @Table(name = "classes")
-@JsonIdentityInfo(
-        generator = ObjectIdGenerators.PropertyGenerator.class,
-        property = "id")
 public class ClassEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,6 +27,7 @@ public class ClassEntity {
 
     @ManyToOne
     @JoinColumn(name = "teacher_id", nullable = false)
+    @JsonIgnoreProperties({"classes", "exams", "password", "authorities"})
     private User teacher;
 
     @Column(name = "invite_code", unique = true, nullable = false, length = 20)
@@ -47,9 +44,12 @@ public class ClassEntity {
     )
     @ToString.Exclude
     @Builder.Default
+    @JsonIgnoreProperties({"classes", "exams", "password", "authorities"})
     private Set<User> students = new HashSet<>();
 
     @OneToMany(mappedBy = "classEntity", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("classEntity")
+    @Builder.Default
     private List<Exam> exams = new ArrayList<>();
 
     @PrePersist

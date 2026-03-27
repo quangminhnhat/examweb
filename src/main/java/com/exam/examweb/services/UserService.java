@@ -9,6 +9,10 @@ import com.exam.examweb.repositories.IUserRepository;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -19,8 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -33,10 +35,15 @@ public class UserService implements UserDetailsService {
     @Transactional(isolation = Isolation.SERIALIZABLE,
             rollbackFor = {Exception.class, Throwable.class})
     public void save(@NotNull User user, String roleName) {
+        // Kiểm tra trùng lặp email trước khi save
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email already exists: " + user.getEmail());
+        }
+
         user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
         user.setProvider(Provider.LOCAL.value);
         
-        Long roleId = com.exam.examweb.constants.Role.student.value; // Default to student
+        Long roleId = com.exam.examweb.constants.Role.student.value; 
         if ("teacher".equalsIgnoreCase(roleName)) {
             roleId = com.exam.examweb.constants.Role.teacher.value;
         }
@@ -54,6 +61,9 @@ public class UserService implements UserDetailsService {
         if (userRepository.findByUsername(registrationRequest.getUsername()).isPresent()) {
             throw new IllegalArgumentException("Username already exists");
         }
+        if (userRepository.findByEmail(registrationRequest.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email already exists");
+        }
 
         User user = new User();
         user.setUsername(registrationRequest.getUsername());
@@ -62,7 +72,7 @@ public class UserService implements UserDetailsService {
         user.setPhone(registrationRequest.getPhone());
         user.setProvider(Provider.LOCAL.value);
 
-        Long roleId = com.exam.examweb.constants.Role.student.value; // Default to student
+        Long roleId = com.exam.examweb.constants.Role.student.value;
         if ("teacher".equalsIgnoreCase(registrationRequest.getRole())) {
             roleId = com.exam.examweb.constants.Role.teacher.value;
         }
@@ -88,10 +98,10 @@ public class UserService implements UserDetailsService {
     }
 
     public void saveOauthUser(String email, @NotNull String username, String googleId, String fullName, String avatar) {
-        if(userRepository.findByGoogleId(googleId).isPresent())
+        Optional<User> existingByGoogleId = userRepository.findByGoogleId(googleId);
+        if(existingByGoogleId.isPresent())
             return;
         
-        // Check if user exists by email to avoid duplicates if they switch providers
         Optional<User> existingUser = userRepository.findByEmail(email);
         if (existingUser.isPresent()) {
             User user = existingUser.get();
@@ -103,21 +113,28 @@ public class UserService implements UserDetailsService {
         }
 
         var user = new User();
-        user.setUsername(email); // Use email as username for OAuth
+        user.setUsername(email);
         user.setEmail(email);
-        user.setPassword(new BCryptPasswordEncoder().encode("OAUTH2_USER")); // Dummy password
+        user.setPassword(new BCryptPasswordEncoder().encode("OAUTH2_USER"));
         user.setProvider(Provider.GOOGLE.value);
         user.setGoogleId(googleId);
         user.setFullName(fullName);
         user.setAvatar(avatar);
-        
-        // NO DEFAULT ROLE ASSIGNED HERE
-        // The user will be redirected to select a role if they have none.
-
         userRepository.save(user);
     }
 
-    // Admin methods
+    @Transactional(readOnly = true)
+    public Page<User> searchUsers(String keyword, int page, int size, String sortBy, String direction) {
+        Sort sort = direction.equalsIgnoreCase(Sort.Direction.ASC.name()) ? 
+                    Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        if (keyword == null || keyword.isEmpty()) {
+            return userRepository.findAll(pageable);
+        }
+        return userRepository.searchUsers(keyword, pageable);
+    }
+
     @Transactional(readOnly = true)
     public List<User> getAllUsers() {
         return userRepository.findAll();

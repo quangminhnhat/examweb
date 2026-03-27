@@ -55,8 +55,20 @@ window.fetchStudentData = function() {
             const list = document.getElementById('studentExamsList');
             list.innerHTML = '';
 
-            // Lọc ra kỳ thi đang mở (isOpen = true)
-            const openExams = exams.filter(e => e.isOpen === true);
+            const now = new Date();
+            // Lọc ra kỳ thi đang mở: (isOpen = true) HOẶC (đang trong thời gian hẹn giờ)
+            const openExams = exams.filter(e => {
+                // Kiểm tra cả 'isOpen' và 'open' để tránh lỗi JSON Mapping
+                const isExplicitlyOpen = (e.isOpen === true || e.open === true);
+                if (isExplicitlyOpen) return true;
+
+                if (e.startTime) {
+                    const start = new Date(e.startTime);
+                    const end = e.endTime ? new Date(e.endTime) : null;
+                    return now >= start && (!end || now <= end);
+                }
+                return false;
+            });
 
             if (openExams.length === 0) {
                 list.innerHTML = '<div class="text-center py-4"><i class="bi bi-cup-hot fs-1 text-muted"></i><p class="text-muted small mt-2">Hiện không có kỳ thi nào đang mở.</p></div>';

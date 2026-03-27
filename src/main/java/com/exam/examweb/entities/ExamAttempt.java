@@ -28,16 +28,16 @@ public class ExamAttempt {
 
     @ManyToOne
     @JoinColumn(name = "exam_id", nullable = false)
-    @JsonIgnoreProperties({"questions", "classEntity", "teacher"}) // Chặn vòng lặp
+    @JsonIgnoreProperties({"questions", "classEntity", "teacher"})
     private Exam exam;
 
     @ManyToOne
     @JoinColumn(name = "student_id", nullable = false)
-    @JsonIgnoreProperties({"password", "roles", "classes"}) // Giấu thông tin nhạy cảm của học sinh
+    @JsonIgnoreProperties({"password", "roles", "classes"})
     private User student;
 
     @Builder.Default
-    private int score = 0; // Điểm số thô (Số câu đúng)
+    private int score = 0;
 
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
@@ -47,11 +47,13 @@ public class ExamAttempt {
 
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    @JsonIgnoreProperties("attempt") // Chống lặp ở list câu trả lời
+    @JsonIgnoreProperties("attempt")
     private List<Answer> answers = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
     }
 }

@@ -49,7 +49,7 @@ public class ExamApiController {
     }
 
     @PostMapping("/submit/{attemptId}")
-    public ResponseEntity<ExamAttempt> submitExam(@PathVariable Long attemptId, @RequestBody Map<Long, Character> answers) {
+    public ResponseEntity<ExamAttempt> submitExam(@PathVariable Long attemptId, @RequestBody Map<String, String> answers) {
         try {
             return ResponseEntity.ok(examService.submitExam(attemptId, answers));
         } catch (IllegalArgumentException e) {
@@ -60,20 +60,19 @@ public class ExamApiController {
     @PutMapping("/questions/{questionId}")
     public ResponseEntity<Void> updateQuestion(@PathVariable Long questionId, @RequestBody Question questionDetails) {
         examService.updateQuestion(questionId, questionDetails);
-        return ResponseEntity.ok().build(); // Chỉ báo OK (Mã 200), không gửi kèm Object để tránh lỗi đóng gói JSON
+        return ResponseEntity.ok().build();
     }
 
     // API Xóa câu hỏi
     @DeleteMapping("/questions/{questionId}")
     public ResponseEntity<Void> deleteQuestion(@PathVariable Long questionId) {
-        examService.deleteQuestion(questionId); // Bạn cần tạo hàm deleteQuestion trong ExamService
+        examService.deleteQuestion(questionId);
         return ResponseEntity.ok().build();
     }
 
     // API Lấy danh sách điểm của học sinh trong 1 kỳ thi
     @GetMapping("/{examId}/results")
     public ResponseEntity<List<ExamAttempt>> getExamResults(@PathVariable Long examId) {
-        // Trả về danh sách bài làm (Bạn cần tạo hàm getAttemptsByExamId trong ExamService)
         return ResponseEntity.ok(examService.getAttemptsByExamId(examId));
     }
 

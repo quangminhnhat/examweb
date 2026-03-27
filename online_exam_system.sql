@@ -6,6 +6,11 @@
 -- Generation Time: Mar 24, 2026 at 03:52 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.16
+CREATE DATABASE IF NOT EXISTS online_exam_system
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE online_exam_system;
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
