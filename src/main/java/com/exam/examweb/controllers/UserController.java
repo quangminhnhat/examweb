@@ -6,6 +6,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -45,6 +47,28 @@ public class UserController {
             return "user/register";
         }
         return "redirect:/login";
+    }
+
+    @GetMapping("/profile")
+    public String profile(@AuthenticationPrincipal UserDetails userDetails, Model model) {
+        if (userDetails == null) {
+            return "redirect:/login";
+        }
+        User user = userService.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        model.addAttribute("user", user);
+        return "user/profile";
+    }
+
+    @PostMapping("/profile/update")
+    public String updateProfile(@AuthenticationPrincipal UserDetails userDetails,
+                                @ModelAttribute("user") User updatedUser,
+                                Model model) {
+        if (userDetails == null) {
+            return "redirect:/login";
+        }
+        userService.updateProfile(userDetails.getUsername(), updatedUser);
+        return "redirect:/profile?success";
     }
 
 }

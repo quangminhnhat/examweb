@@ -220,4 +220,18 @@ public class UserService implements UserDetailsService {
         }
         userRepository.deleteById(id);
     }
+
+    @Transactional
+    public User updateProfile(String username, User updatedUser) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        
+        user.setFullName(updatedUser.getFullName());
+        user.setEmail(updatedUser.getEmail());
+        user.setPhone(updatedUser.getPhone());
+        user.setDob(updatedUser.getDob());
+        user.setAvatar(updatedUser.getAvatar());
+        
+        return userRepository.save(user);
+    }
 }
