@@ -55,6 +55,7 @@
             <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
                 <li class="nav-item"><button class="nav-link active me-2" data-bs-toggle="tab" data-bs-target="#tab-exams">Kỳ thi</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-students">Sinh viên</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notes">Ghi chú</button></li>
             </ul>
         </div>
         <div class="card-body p-4 pt-0">
@@ -62,7 +63,10 @@
                 <div class="tab-pane fade show active" id="tab-exams">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="fw-bold m-0">Đề thi trong lớp</h5>
-                        <button class="btn btn-primary rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#createExamModal">+ Tạo đề mới</button>
+                        <div>
+                            <button class="btn btn-outline-success me-2 rounded-pill" onclick="downloadTemplate()">Tải mẫu Excel</button>
+                            <button class="btn btn-success rounded-pill" data-bs-toggle="modal" data-bs-target="#importExamModal">+ Import đề thi từ Excel</button>
+                        </div>
                     </div>
                     <table class="table align-middle">
                         <thead class="table-light"><tr><th>STT</th><th>Tên Kỳ Thi</th><th>Mã Thi</th><th class="text-end">Thao tác</th></tr></thead>
@@ -74,6 +78,13 @@
                         <thead class="table-light"><tr><th>STT</th><th>Họ tên</th><th>Email</th></tr></thead>
                         <tbody id="studentListBody"></tbody>
                     </table>
+                </div>
+                <div class="tab-pane fade" id="tab-notes">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold m-0">Ghi chú lớp học</h5>
+                        <button class="btn btn-success rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#createNoteModal">+ Tạo ghi chú mới</button>
+                    </div>
+                    <div id="notesContainer"></div>
                 </div>
             </div>
         </div>
@@ -90,6 +101,94 @@
             </div>
             <div class="modal-footer border-0">
                 <button class="btn btn-primary w-100 rounded-pill fw-bold py-2" onclick="createExam()">BẮT ĐẦU TẠO</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editExamModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0">
+                <h5 class="fw-bold">Chỉnh sửa tên kỳ thi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-0">
+                <input type="hidden" id="editExamIdInput">
+                <label class="small fw-bold text-secondary">TÊN KỲ THI MỚI</label>
+                <input type="text" class="form-control bg-light border-0" id="editExamTitleInput" placeholder="Ví dụ: Kiểm tra giữa kỳ">
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-primary w-100 rounded-pill fw-bold py-2" onclick="saveEditedExamName()">LƯU THAY ĐỔI</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createNoteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0"><h5 class="fw-bold">Tạo ghi chú mới</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body py-0">
+                <label class="small fw-bold text-secondary">TIÊU ĐỀ</label>
+                <input type="text" class="form-control bg-light border-0 mb-3" id="noteTitleInput" placeholder="Ví dụ: Lịch thi cuối kỳ">
+                <label class="small fw-bold text-secondary">NỘI DUNG</label>
+                <textarea class="form-control bg-light border-0" id="noteContentInput" rows="4" placeholder="Nội dung ghi chú..."></textarea>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-success w-100 rounded-pill fw-bold py-2" onclick="createNote()">TẠO GHI CHÚ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editNoteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0"><h5 class="fw-bold">Chỉnh sửa ghi chú</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body py-0">
+                <input type="hidden" id="editNoteId">
+                <label class="small fw-bold text-secondary">TIÊU ĐỀ</label>
+                <input type="text" class="form-control bg-light border-0 mb-3" id="editNoteTitleInput" placeholder="Ví dụ: Lịch thi cuối kỳ">
+                <label class="small fw-bold text-secondary">NỘI DUNG</label>
+                <textarea class="form-control bg-light border-0" id="editNoteContentInput" rows="4" placeholder="Nội dung ghi chú..."></textarea>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-primary w-100 rounded-pill fw-bold py-2" onclick="updateNote()">CẬP NHẬT GHI CHÚ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="importExamModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-0">
+                <h5 class="fw-bold">Import đề thi hoàn chỉnh từ Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-0">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Chọn file Excel</label>
+                    <input type="file" class="form-control" id="excelFileInput" accept=".xlsx,.xls">
+                    <div class="form-text">File Excel phải có định dạng đúng theo mẫu với thông tin đề thi và câu hỏi.</div>
+                </div>
+                <div class="alert alert-info">
+                    <strong>Hướng dẫn định dạng file Excel:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li><strong>Hàng 1:</strong> Tên đề thi (ô A1), Thời gian làm bài (ô B1), Tổng điểm (ô C1)</li>
+                        <li><strong>Hàng 3:</strong> Tiêu đề các cột câu hỏi</li>
+                        <li><strong>Hàng 4 trở đi:</strong> Các câu hỏi</li>
+                        <li><strong>Cột A:</strong> Nội dung câu hỏi</li>
+                        <li><strong>Cột B-D:</strong> Đáp án A, B, C</li>
+                        <li><strong>Cột E:</strong> Đáp án D (tùy chọn)</li>
+                        <li><strong>Cột F:</strong> Đáp án đúng (A, B, C, D)</li>
+                        <li><strong>Cột G:</strong> Điểm số (mặc định 1)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-success w-100 rounded-pill fw-bold py-2" onclick="importEntireExam()">IMPORT ĐỀ THI</button>
             </div>
         </div>
     </div>

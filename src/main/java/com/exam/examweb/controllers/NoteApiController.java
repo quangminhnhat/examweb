@@ -27,7 +27,18 @@ public class NoteApiController {
     private final IUserRepository userRepository;
 
     @GetMapping("/class/{classId}")
-    public ResponseEntity<List<Note>> getNotesByClass(@PathVariable Long classId) {
+    public ResponseEntity<List<Note>> getNotesByClass(@PathVariable Long classId, @AuthenticationPrincipal UserDetails userDetails) {
+        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
+        ClassEntity classEntity = classRepository.findById(classId).orElseThrow();
+
+        // Check if user is the teacher or a student in the class
+        boolean isTeacher = classEntity.getTeacher().getId().equals(user.getId());
+        boolean isStudent = classEntity.getStudents().stream().anyMatch(s -> s.getId().equals(user.getId()));
+
+        if (!isTeacher && !isStudent) {
+            return ResponseEntity.status(403).build();
+        }
+
         return ResponseEntity.ok(noteRepository.findByClassEntityId(classId));
     }
 
@@ -51,8 +62,35 @@ public class NoteApiController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteNote(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteNote(@PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
+        Note note = noteRepository.findById(id).orElseThrow();
+        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
+
+        // Check if user owns the note or is the teacher of the class
+        if (!note.getUser().getId().equals(user.getId()) && !note.getClassEntity().getTeacher().getId().equals(user.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+
         noteRepository.deleteById(id);
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Note> updateNote(@PathVariable Long id, @RequestBody Map<String, Object> payload, @AuthenticationPrincipal UserDetails userDetails) {
+        Note note = noteRepository.findById(id).orElseThrow();
+        User user = userRepository.findByUsername(userDetails.getUsername()).orElseThrow();
+
+        // Check if user owns the note or is the teacher of the class
+        if (!note.getUser().getId().equals(user.getId()) && !note.getClassEntity().getTeacher().getId().equals(user.getId())) {
+            return ResponseEntity.status(403).build();
+        }
+
+        String title = (String) payload.get("title");
+        String content = (String) payload.get("content");
+
+        if (title != null) note.setTitle(title);
+        if (content != null) note.setContent(content);
+
+        return ResponseEntity.ok(noteRepository.save(note));
     }
 }

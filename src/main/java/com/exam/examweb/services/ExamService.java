@@ -15,6 +15,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.ArrayList;
 import java.time.LocalDateTime;
+import java.io.IOException;
+import java.io.InputStream;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 @Service
 @RequiredArgsConstructor
@@ -280,6 +284,14 @@ public class ExamService {
         return exam.getIsOpen();
     }
 
+    @Transactional
+    public void updateExamTitle(Long examId, String newTitle) {
+        Exam exam = examRepository.findById(examId).orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+        if (!hasManagePermission(exam)) throw new AccessDeniedException("Permission denied.");
+        exam.setExamTitle(newTitle);
+        examRepository.save(exam);
+    }
+
     public byte[] exportToExcel(Long examId) throws java.io.IOException {
         Exam exam = examRepository.findById(examId).orElseThrow(() -> new IllegalArgumentException("Exam not found"));
         if (!hasManagePermission(exam)) throw new AccessDeniedException("Permission denied.");
@@ -302,6 +314,148 @@ public class ExamService {
             java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
             workbook.write(out);
             return out.toByteArray();
+        }
+    }
+
+    @Transactional
+    public Map<String, Object> importEntireExamFromExcel(InputStream excelInputStream, Long classId) throws IOException {
+        User currentUser = getCurrentUser();
+        if (!isTeacher(currentUser) && !isAdmin(currentUser)) {
+            throw new AccessDeniedException("Only teachers or admins can import exams.");
+        }
+
+        try (Workbook workbook = new XSSFWorkbook(excelInputStream)) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            // Read exam metadata from first few rows
+            String examTitle = getCellValueAsString(sheet.getRow(0).getCell(0)); // A1: Exam title
+            String durationStr = getCellValueAsString(sheet.getRow(0).getCell(1)); // B1: Duration
+            String totalScoreStr = getCellValueAsString(sheet.getRow(0).getCell(2)); // C1: Total score
+
+            // Validate exam metadata
+            if (examTitle == null || examTitle.trim().isEmpty()) {
+                throw new IllegalArgumentException("Exam title is required in cell A1");
+            }
+
+            int duration = 45; // default
+            try {
+                if (durationStr != null && !durationStr.trim().isEmpty()) {
+                    duration = Integer.parseInt(durationStr.trim());
+                }
+            } catch (NumberFormatException e) {
+                // Use default duration
+            }
+
+            int totalScore = 100; // default
+            try {
+                if (totalScoreStr != null && !totalScoreStr.trim().isEmpty()) {
+                    totalScore = Integer.parseInt(totalScoreStr.trim());
+                }
+            } catch (NumberFormatException e) {
+                // Use default total score
+            }
+
+            // Create the exam
+            Exam exam = Exam.builder()
+                    .examTitle(examTitle.trim())
+                    .duration(duration)
+                    .totalScore(totalScore)
+                    .open(false)
+                    .build();
+
+            // Set teacher
+            if (isAdmin(currentUser)) {
+                exam.setTeacher(currentUser); // Admin can import for themselves
+            } else {
+                exam.setTeacher(currentUser);
+            }
+
+            // Set class if provided
+            if (classId != null) {
+                ClassEntity classEntity = classRepository.findById(classId)
+                        .orElseThrow(() -> new IllegalArgumentException("Class not found"));
+                exam.setClassEntity(classEntity);
+            }
+
+            if (exam.getExamCode() == null || exam.getExamCode().trim().isEmpty()) {
+                exam.setExamCode(UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+            }
+
+            Exam savedExam = examRepository.save(exam);
+
+            // Import questions starting from row 3 (skip metadata and header)
+            int questionCount = 0;
+            for (int i = 3; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                // Read question data
+                String content = getCellValueAsString(row.getCell(0)); // Question content
+                String optionA = getCellValueAsString(row.getCell(1)); // Option A
+                String optionB = getCellValueAsString(row.getCell(2)); // Option B
+                String optionC = getCellValueAsString(row.getCell(3)); // Option C
+                String optionD = getCellValueAsString(row.getCell(4)); // Option D
+                String correctOption = getCellValueAsString(row.getCell(5)); // Correct option (A, B, C, D)
+                String scoreStr = getCellValueAsString(row.getCell(6)); // Score
+
+                // Validate required fields
+                if (content == null || content.trim().isEmpty()) continue;
+                if (optionA == null || optionA.trim().isEmpty()) continue;
+                if (optionB == null || optionB.trim().isEmpty()) continue;
+                if (correctOption == null || correctOption.trim().isEmpty() || correctOption.trim().length() != 1) continue;
+
+                // Parse score (default to 1 if not provided or invalid)
+                int score = 1;
+                try {
+                    if (scoreStr != null && !scoreStr.trim().isEmpty()) {
+                        score = Integer.parseInt(scoreStr.trim());
+                    }
+                } catch (NumberFormatException e) {
+                    // Use default score of 1
+                }
+
+                // Create question
+                Question question = Question.builder()
+                        .exam(savedExam)
+                        .content(content.trim())
+                        .optionA(optionA.trim())
+                        .optionB(optionB.trim())
+                        .optionC(optionC != null ? optionC.trim() : null)
+                        .optionD(optionD != null ? optionD.trim() : null)
+                        .correctOption(correctOption.trim().toUpperCase().charAt(0))
+                        .score(score)
+                        .build();
+
+                questionRepository.save(question);
+                questionCount++;
+            }
+
+            return Map.of(
+                "examId", savedExam.getId(),
+                "examTitle", savedExam.getExamTitle(),
+                "questionCount", questionCount
+            );
+        }
+    }
+
+    private String getCellValueAsString(Cell cell) {
+        if (cell == null) return null;
+
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getDateCellValue().toString();
+                } else {
+                    return String.valueOf((int) cell.getNumericCellValue());
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return null;
         }
     }
 

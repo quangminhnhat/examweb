@@ -35,7 +35,10 @@ window.fetchStudentData = function() {
                             <p class="text-secondary small mb-3"><i class="bi bi-person-badge me-1"></i> GV: ${teacherName}</p>
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="badge bg-light text-primary border border-primary px-3 rounded-pill">Mã lớp: ${cls.inviteCode}</span>
-                                <button class="btn btn-sm btn-link text-decoration-none fw-bold" onclick="viewClassExams(${cls.id})">Xem bài thi &rarr;</button>
+                                <div>
+                                    <button class="btn btn-sm btn-link text-decoration-none fw-bold me-2" onclick="viewClassNotes(${cls.id}, '${cls.className}')">Xem ghi chú</button>
+                                    <button class="btn btn-sm btn-link text-decoration-none fw-bold" onclick="viewClassExams(${cls.id})">Xem bài thi &rarr;</button>
+                                </div>
                             </div>
                         </div>
                         <button class="btn btn-danger btn-sm btn-leave rounded-circle shadow"
@@ -182,4 +185,58 @@ window.viewClassExams = function(classId) {
     // Focus vào ô nhập mã thi để hướng dẫn sinh viên
     document.getElementById('quickExamCode').focus();
     alert("Vui lòng xem các kỳ thi đang mở ở cột bên phải, hoặc nhập Mã thi để làm bài!");
+};
+
+window.viewClassNotes = function(classId, className) {
+    document.getElementById('notesClassName').innerText = className;
+    $('#viewNotesModal').modal('show');
+    fetchNotesForClass(classId);
+};
+
+window.fetchNotesForClass = function(classId) {
+    const container = document.getElementById('notesContainer');
+    container.innerHTML = `
+        <div class="col-12 text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Đang tải ghi chú...</p>
+        </div>
+    `;
+
+    fetch('/api/notes/class/' + classId)
+        .then(res => res.json())
+        .then(data => {
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center py-5 text-muted">Chưa có ghi chú nào trong lớp này.</div>';
+                return;
+            }
+
+            let html = '';
+            data.forEach((note, index) => {
+                const title = note.title || "Ghi chú không tiêu đề";
+                const content = note.content || "";
+                const createdAt = note.createdAt ? new Date(note.createdAt).toLocaleDateString('vi-VN') : "N/A";
+                const updatedAt = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString('vi-VN') : "N/A";
+                const author = note.user ? (note.user.fullName || note.user.username) : "Ẩn danh";
+
+                html += `
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0 fw-bold">${title}</h6>
+                                <small class="text-muted">Tác giả: ${author}</small>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-2">${content.replace(/\n/g, '<br>')}</p>
+                                <small class="text-muted">Tạo: ${createdAt} | Cập nhật: ${updatedAt}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            container.innerHTML = '<div class="col-12 text-center py-4 text-danger">Lỗi khi tải ghi chú. Vui lòng thử lại.</div>';
+            console.error("Lỗi tải ghi chú:", error);
+        });
 };
